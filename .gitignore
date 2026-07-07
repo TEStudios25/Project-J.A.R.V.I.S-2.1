@@ -1,0 +1,21 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Python Cache
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment Secrets
+.env
+.env.local
+
+# Local J.A.R.V.I.S. Memories and Diagnostics logs
+core/memory.json
+Frontend/Sounds/
+Frontend/Graphics/
+*.log
+.system_generated/

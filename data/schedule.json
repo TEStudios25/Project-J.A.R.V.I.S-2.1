@@ -1,0 +1,74 @@
+{
+    "2026-05-28": [
+        {
+            "time": "14:30",
+            "task": "Review J.A.R.V.I.S. Core Components Code",
+            "status": "pending"
+        },
+        {
+            "time": "14:30",
+            "task": "Review J.A.R.V.I.S. Core Components Code",
+            "status": "pending"
+        }
+    ],
+    "2026-06-08": [
+        {
+            "time": "21:07",
+            "task": "Mail a partner regarding business",
+            "status": "pending"
+        }
+    ],
+    "2026-06-22": [
+        {
+            "time": "08:17 PM",
+            "task": "Meeting with friend",
+            "status": "pending"
+        },
+        {
+            "time": "08:16 PM",
+            "task": "Meeting with friend",
+            "status": "pending"
+        },
+        {
+            "time": "20:48",
+            "task": "meeting with friend",
+            "status": "pending"
+        }
+    ],
+    "2026-06-23": [
+        {
+            "id": "36b29e49-1d4a-469b-9cf8-3f5fe1d5c42b",
+            "time": "06:50 PM",
+            "task": "Have a talk with my friend again",
+            "status": "notified"
+        },
+        {
+            "id": "0e272ae7-bd04-4082-93f2-b114975e76e8",
+            "time": "08:45 PM",
+            "task": "Meeting with friend",
+            "status": "notified"
+        }
+    ],
+    "2026-07-03": [
+        {
+            "id": "98f6e7e0-b596-4d13-bad2-73c40feb9f5d",
+            "time": "07:32 AM",
+            "task": "Go out",
+            "status": "notified"
+        }
+    ],
+    "2026-07-04": [
+        {
+            "id": "bae0d3a6-151c-4b36-9747-2c6ad3642e2c",
+            "time": "06:10 PM",
+            "task": "friend meeting",
+            "status": "notified"
+        },
+        {
+            "id": "9be2e689-50ff-411e-ab61-b31e114d38a2",
+            "time": "06:14 PM",
+            "task": "friend meeting (rescheduled)",
+            "status": "notified"
+        }
+    ]
+}

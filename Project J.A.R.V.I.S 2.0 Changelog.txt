@@ -1,0 +1,79 @@
+# ===============================================================
+# 🧾 CHANGELOG: Project J.A.R.V.I.S. 2.0 (Master Build)
+# ===============================================================
+
+## 🔰 THE 2.0 HIGHLIGHTS: MASSIVE SYSTEM OVERHAUL
+1. 🖥️ **Sci-Fi Graphical User Interface (GUI)**  
+   Completely abandoned the standard text terminal for a gorgeous, frameless PyQt5 GUI. Features a central holographic arc-reactor animation, Matrix-green dynamic boot logs, a real-time HUD status bar, and a custom-styled cyber-terminal input box.
+
+2. 🧠 **The Gemini Native Brain Integration**  
+   Migrated from legacy Groq APIs to the highly advanced Google Gemini API engine. J.A.R.V.I.S. now utilizes Native Function Calling, allowing the AI to autonomously decide when and how to trigger physical tools without relying on rigid, hardcoded if/else word detection.
+
+3. ⚡ **Multi-Threaded Nervous System**  
+   Rewrote the core architecture to run asynchronously. The Brain, Voice Engine, Microphone, and Visual Interface now run on separate, synchronized background daemon threads. The screen never freezes, even when J.A.R.V.I.S. is speaking or thinking.
+
+4. 🎙️ **Flawless Voice & Text Routing (Infinite Standby)**  
+   Removed the clunky "Voice or Text" startup prompt. The system now features a real-time GUI Mic Toggle. The microphone rests in pure, infinite standby with zero "phantom processing," perfectly filtering out room static until explicitly spoken to. 
+
+5. 👁️ **Optical Character Recognition (OCR) Vision**  
+   Integrated local OCR processing using pytesseract and OpenCV, officially giving J.A.R.V.I.S. the ability to "see" and extract text, detect objects (faces/eyes), identify shapes, and analyze colors directly from local visual data entirely offline.
+
+6. 🛑 **Absolute Control: The Override & Kill Switch**  
+   Added the ability to type or say "Stop", "Pause", or "Resume" to instantly cut or pause J.A.R.V.I.S. mid-sentence via direct Pygame audio stream manipulation. Integrated a master shutdown protocol that cleanly kills all processes, bids farewell, and closes the application gracefully.
+
+7. 🔒 **Upgraded Security Access Gate**  
+   Integrated a flawless SHA-256 encrypted password gate directly into the main boot sequence. Utilizes `pwinput` to mask keystrokes visually and locks the system down entirely after 3 failed attempts before the GUI or Brain are allowed to load.
+
+---
+
+## 🚀 PHASE 2 UPGRADES & SECURITY HARDENING (July 2026 Build)
+1. 📱 **Real-Time Mobile Connection HUD**  
+   Overhauled the network scanner to check the online/offline ping status of Mr. Pranav's phone in a background QThread. Displays status as a premium, glowing green (Online) or red (Offline) rectangular status box on the Left Sidebar.
+
+2. 🎵 **Procedural Sci-Fi Sound FX (SFX) Engine**  
+   Synthesizes digital chimes (boot, success, warning, shutdown) via wave mathematics. Triggers sound effects on system boot, successful tool runs, CPU spikes, and power-downs.
+
+3. 🤫 **Smart Whisper Mode**  
+   Tracks spoken mic input amplitude (RMS energy). If a whisper threshold is detected (RMS < 380), J.A.R.V.I.S. automatically replies in a soft, whispering voice (en-US-JennyNeural) at a reduced 32% output volume.
+
+4. 🧠 **Cognitive Sentiment Mood Gauge**  
+   Evaluates textual query vocabulary in real-time to detect user mood (Fatigued, Rushed, Excited, Calm). Automatically displays user mood on the sidebar and adapts J.A.R.V.I.S.'s prompt settings (e.g. being quick if rushed).
+
+5. 🔒 **Graphical Passcode Login Gate**  
+   Converted the console-based pwinput passcode gate into a beautiful, styled, glassmorphic PyQt5 password dialog window (JarvisSecurityDialog). Prompts for authorization code "20123" at Windows startup even when launched silently (via pythonw.exe).
+
+6. 📝 **Auto-Updating Todo Workspace**  
+   Added an interactive todo checklist on the right Workspace panel. Allows adding and completing tasks by voice, updating the JSON database and GUI dynamically.
+
+7. 🛠️ **Developer Tool Belt Expansion**  
+   Integrated an AST-based Python syntax checker for files, a self-optimizing system cache/recycle bin cleaner, and a weekly productivity telemetry summarizer.
+
+8. ⚙️ **Windows Login Auto-Boot**  
+   Registered J.A.R.V.I.S. to the Windows Startup registry via a silent background batch launcher shortcut, booting the assistant automatically on PC lock unlock.
+
+---
+
+## 🧩 INTERNAL IMPROVEMENTS & TOOL UPGRADES
+- **Upgraded Senses Matrix:** Speech-to-Text uses lightning-fast Google API, and Text-to-Speech utilizes Microsoft Edge-TTS (en-GB-RyanNeural) piped invisibly through Pygame for zero-latency, realistic British audio.
+- **Tool Automation Mastery:** Advanced Python scripts integrated for YouTube playback (via pywhatkit), intelligent DuckDuckGo web scraping, system file locating, and on-demand PDF/Image generation.
+- **Deep Hardware Telemetry:** Upgraded system monitor to track CPU, RAM, Network, Disk, and specifically engineered to read Intel Integrated Graphics 4400 loads natively via hidden Windows PowerShell counters.
+- **Emoji Filtering Protocol:** J.A.R.V.I.S. now prints rich emojis to the visual UI terminal but cleanly filters them out of the audio engine so he speaks completely naturally.
+- **Dynamic Boot Sequence:** The startup process is now fully integrated into the GUI, actively printing status updates to the screen and announcing subsystem checks out loud simultaneously.
+
+---
+
+## 🔮 EXPECTED FUTURE UPDATES (Projected for 3.0)
+1. 📚 **Local RAG Memory Bank:** Integrating a lightweight local Vector Database (like SQLite or ChromaDB) so J.A.R.V.I.S. can index, read, and instantly recall thousands of local PDFs, text files, and codebases entirely offline.
+2. ⚙️ **Deep OS Automation:** Expanding local `pyautogui` and `os` module capabilities so J.A.R.V.I.S. can actively manage windows, organize messy folders autonomously, and execute complex multi-step macros on the PC.
+3. 👻 **System Tray & Background Daemon:** Moving the GUI to a minimizable system tray icon with a global hotkey, allowing J.A.R.V.I.S. to monitor and assist passively without taking up monitor real estate until called.
+4. 📬 **Local Client Parsing:** Using local Python COM automation (like `pywin32`) to securely read unread emails and upcoming calendar events directly from local desktop clients without needing complex cloud API keys.
+
+---
+
+**Version:** Project J.A.R.V.I.S. 2.0  
+**Status:** Perfected Build – Secured Multi-Threaded Visual Core Online  
+**Creator:** Mr. Pranav  
+**Base of Operations:** Guntur, Andhra Pradesh, India
+**AI Architecture:** Gemini 3.1 Flash Lite (Native Function Routing)  
+**Deployment Date:** 
+# ===============================================================
