@@ -5,24 +5,32 @@ import pygame
 recognizer = sr.Recognizer()
 recognizer.dynamic_energy_threshold = False
 recognizer.energy_threshold = 280   # Lowered to 280 to easily catch whispers, low voices, and fillers!
-recognizer.pause_threshold = 2.0    # Comfortable 2-second timeout before auto-submitting
+recognizer.pause_threshold = 0.8    # Responsive 0.8-second timeout before auto-submitting
+
+is_calibrated = False # Global flag to ensure calibration runs only once on startup
 
 def listen(check_active_func=None) -> str:
     """
     Listens to the microphone with an advanced 'Barge-In' Intercept Mode.
-    Normal Mode uses simple pause-based auto-submission with a 2-second timeout.
+    Normal Mode uses simple pause-based auto-submission with a 0.8-second timeout.
     """
+    global is_calibrated
     with sr.Microphone() as source:
         # Check if J.A.R.V.I.S. is currently speaking out loud
         is_speaking = False
         if pygame.mixer.get_init() and pygame.mixer.music.get_busy():
             is_speaking = True
             
-        # 🔥 THE FIX: ONLY calibrate noise if the room is quiet!
-        # If JARVIS is talking, recalibrating will make the mic deaf to your voice.
+        # 🔥 THE FIX: Calibrate noise ONLY once on boot, never on every turn!
+        # This speeds up listening start by 0.5s per turn.
+        if not is_calibrated and not is_speaking:
+            print("\n[🎙️ J.A.R.V.I.S. is calibrating mic for ambient noise...]")
+            recognizer.adjust_for_ambient_noise(source, duration=0.8)
+            is_calibrated = True
+            print("[✓] Calibration complete. Standby.")
+        
         if not is_speaking:
-            print("\n[🎙️ J.A.R.V.I.S. is listening (2.0s pause standby)...]")
-            recognizer.adjust_for_ambient_noise(source, duration=0.5)
+            print("\n[🎙️ J.A.R.V.I.S. is listening (0.8s pause standby)...]")
         
         try:
             # Dynamic Listening Logic
@@ -30,15 +38,15 @@ def listen(check_active_func=None) -> str:
                 # BARGE-IN MODE: Listen in short bursts without recalibrating
                 # Use small pause threshold for quick barge-in overrides
                 old_pt = recognizer.pause_threshold
-                recognizer.pause_threshold = 0.5
+                recognizer.pause_threshold = 0.4
                 try:
                     audio = recognizer.listen(source, timeout=1, phrase_time_limit=3)
                 finally:
                     recognizer.pause_threshold = old_pt
             else:
-                # NORMAL MODE: Single listen call with 2.0-second pause threshold
-                recognizer.pause_threshold = 2.0
-                audio = recognizer.listen(source)
+                # NORMAL MODE: Single listen call with 0.8-second pause threshold
+                recognizer.pause_threshold = 0.8
+                audio = recognizer.listen(source, timeout=10, phrase_time_limit=15)
                 print("[⚙️ Processing...]")
             
             # Calculate RMS energy of the recorded audio

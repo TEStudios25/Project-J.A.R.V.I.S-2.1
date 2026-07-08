@@ -197,6 +197,7 @@ class JarvisGUI(QMainWindow):
 
         # Operational State Matrix
         self.mic_active = False  
+        self.pending_confirmation_action = None
         
         # Autonomous reminder daemon
         self.reminder_service = ReminderService(on_reminder=self.handle_autonomous_reminder)
@@ -1048,6 +1049,11 @@ class JarvisGUI(QMainWindow):
         self.safe_append_chat("Mr. Pranav", raw_text)
         self.add_notif_signal.emit(f"User command: '{raw_text[:20]}'")
         
+        # Intercept if a confirmation is active
+        if self.pending_confirmation_action:
+            threading.Thread(target=self.handle_confirmation_input, args=(raw_text,), daemon=True).start()
+            return
+            
         # Process context
         threading.Thread(target=self.execute_brain_processing, args=(raw_text,), daemon=True).start()
 
@@ -1081,6 +1087,12 @@ class JarvisGUI(QMainWindow):
             voice_query = listen(check_active_func=lambda: self.mic_active)
             if voice_query and self.mic_active:
                 self.append_text_signal.emit("Mr. Pranav", voice_query)
+                
+                # Intercept if a confirmation is active
+                if self.pending_confirmation_action:
+                    threading.Thread(target=self.handle_confirmation_input, args=(voice_query,), daemon=True).start()
+                    continue
+                    
                 self.execute_brain_processing(voice_query)
 
     def execute_brain_processing(self, command_text: str):
@@ -1088,10 +1100,11 @@ class JarvisGUI(QMainWindow):
         
         # 🚨 SYSTEM SHUTDOWN INTERCEPT 🚨
         if clean_cmd in ["shutdown", "exit", "quit", "power off", "shutdown system", "close system"]:
-            self.update_status_signal.emit("SYSTEM STATUS: INITIATING SHUTDOWN...")
-            self.append_text_signal.emit("SYSTEM", "Executing shutdown protocol...")
-            self.add_notif_signal.emit("Initiating shutdown loop.")
-            threading.Thread(target=self.system_shutdown, daemon=True).start()
+            self.pending_confirmation_action = "shutdown"
+            msg = "Confirming authorization, sir. Are you sure you want to shut down J.A.R.V.I.S.?"
+            self.append_text_signal.emit("J.A.R.V.I.S.", msg)
+            self.add_notif_signal.emit("Awaiting shutdown authorization.")
+            speak(msg)
             return
             
         self.update_status_signal.emit("SYSTEM STATUS: COMPILED Telemetry sequence processing...")
@@ -1125,15 +1138,29 @@ class JarvisGUI(QMainWindow):
             self.update_status_signal.emit("SYSTEM STATUS: STANDBY // MICROPHONE MUTED")
             self.wave_widget.is_active = False
 
-    def system_shutdown(self):
-        # Verbal confirmation gate
-        from senses.stt_engine import listen
-        speak("Confirming authorization, sir. Are you sure you want to shut down J.A.R.V.I.S.?")
-        reply = listen(check_active_func=lambda: True)
-        if not reply or not any(w in reply.lower() for w in ["yes", "confirm", "proceed", "sure", "do it"]):
-            speak("Shutdown protocol aborted.")
-            return
-            
+    def handle_confirmation_input(self, text: str):
+        clean_txt = text.lower().strip()
+        
+        if any(w in clean_txt for w in ["yes", "confirm", "proceed", "sure", "do it"]):
+            if self.pending_confirmation_action == "shutdown":
+                self.pending_confirmation_action = None
+                self.update_status_signal.emit("SYSTEM STATUS: INITIATING SHUTDOWN...")
+                self.append_text_signal.emit("SYSTEM", "Executing shutdown protocol...")
+                self.add_notif_signal.emit("Initiating shutdown loop.")
+                self.execute_actual_shutdown()
+        elif any(w in clean_txt for w in ["no", "cancel", "abort", "stop", "don't"]):
+            self.pending_confirmation_action = None
+            msg = "Shutdown protocol aborted, sir."
+            self.append_text_signal.emit("J.A.R.V.I.S.", msg)
+            self.add_notif_signal.emit("Shutdown aborted.")
+            speak(msg)
+            self.update_status_signal.emit("SYSTEM STATUS: STANDBY")
+        else:
+            msg = "Confirmation required. Please type or say 'Yes' to proceed, or 'Cancel' to abort."
+            self.append_text_signal.emit("J.A.R.V.I.S.", msg)
+            speak(msg)
+
+    def execute_actual_shutdown(self):
         final_words = "Shutting down core processors. It was an honor serving you, Mr. Pranav."
         self.append_text_signal.emit("J.A.R.V.I.S.", final_words)
         self.play_sfx("shutdown.wav")
