@@ -2,25 +2,36 @@ import webbrowser
 import urllib.parse
 
 def open_website(site_name: str) -> str:
-    """Opens common websites directly in the user's default browser."""
-    site_name = site_name.lower().replace(" ", "")
-    print(f"\n[🌐 J.A.R.V.I.S. is launching {site_name} in the browser...]")
+    """Opens common websites, custom domain extensions (.in, .org), or direct URLs in browser."""
+    site_name_clean = site_name.strip()
+    site_name_lower = site_name_clean.lower()
+    print(f"\n[🌐 J.A.R.V.I.S. is launching {site_name_clean} in the browser...]")
     
-    domains = {
-        "instagram": "https://www.instagram.com",
-        "youtube": "https://www.youtube.com",
-        "google": "https://www.google.com",
-        "github": "https://www.github.com",
-        "chatgpt": "https://chat.openai.com",
-        "whatsapp": "https://web.whatsapp.com",
-        "reddit": "https://www.reddit.com"
-    }
-    
-    url = domains.get(site_name, f"https://www.{site_name}.com")
+    # 1. Direct URLs
+    if site_name_lower.startswith("http://") or site_name_lower.startswith("https://"):
+        url = site_name_clean
+    # 2. Domains with extensions (like amazon.in, google.com)
+    elif "." in site_name_lower:
+        if site_name_lower.startswith("www."):
+            url = f"https://{site_name_clean}"
+        else:
+            url = f"https://www.{site_name_clean}"
+    # 3. Raw names (like instagram, youtube)
+    else:
+        domains = {
+            "instagram": "https://www.instagram.com",
+            "youtube": "https://www.youtube.com",
+            "google": "https://www.google.com",
+            "github": "https://www.github.com",
+            "chatgpt": "https://chat.openai.com",
+            "whatsapp": "https://web.whatsapp.com",
+            "reddit": "https://www.reddit.com"
+        }
+        url = domains.get(site_name_lower, f"https://www.{site_name_lower}.com")
     
     try:
         webbrowser.open(url)
-        return f"Successfully opened {site_name} on your screen."
+        return f"Successfully opened {url} on your screen."
     except Exception as e:
         return f"Failed to open the website. Error: {str(e)}"
 

@@ -1,64 +1,80 @@
-# Project J.A.R.V.I.S. 2.0 — Simple Feature Catalog
+# Project J.A.R.V.I.S. 2.0 — Official Capabilities Catalog
 
-This is a simple list of exactly what J.A.R.V.I.S. 2.0 can do for you on your computer.
+A simple, direct list of exactly what J.A.R.V.I.S. 2.0 can do.
 
 ---
 
-## 🔐 Security & Greeting
-* **Lock screen protection**: Requests a passcode on startup to protect your workspace.
-* **Smart time greeting**: Checks the time of day on boot and verbally wishes you "Good Morning", "Good Afternoon", or "Good Evening".
-* **Passcode attempts tracker**: Automatically locks out input if the wrong passcode is entered 3 times.
+## 🔐 Security & Access
+* Asks passcode on startup
+* Wishes you depending on time
+* Blocks multiple app launches
+* Locks out after 3 failures
 
 ## 🎨 Visual HUD & Interface
-* **High-tech HUD**: Features a futuristic glassmorphic UI with neon-cyan colors.
-* **Chat bubbles**: Displays messages in clean, rounded, color-coded chat bubbles.
-* **Readable fonts**: Uses large, clear text so you don't have to squint to read responses.
-* **Vocal wave visualizer**: Shows glowing audio waves that move in real-time when you speak.
-* **System logs**: Displays system logs at the bottom left showing active tools.
+* Futuristic glassmorphic UI design
+* Color-coded chat message bubbles
+* Large, readable font layout
+* Dynamic clock and date display
+* Real-time notifications logger
+* Animated glowing voice waveform
 
-## 🎙️ Speech & Listening (Voice Mode)
-* **Instant vocal replies**: Streams speech directly from memory so he replies immediately.
-* **Fast voice capture**: Automatically stops recording and processes your command within 0.8 seconds of you pausing.
-* **Whisper detection**: If you whisper, he automatically replies in a quiet whisper voice.
-* **Voice interruption**: You can verbally interrupt him while he is speaking by saying *"stop"*, *"pause"*, or *"shut up"*.
-* **Media ducking**: Automatically pauses or lowers your Spotify/music volume while he speaks, and resumes it when he is done.
+## 🎙️ Speech & Voice (STT/TTS)
+* Instantly speaks replies from RAM
+* Detects whispers and whispers back
+* Stops recording when you pause (0.8s)
+* Let's you verbally interrupt playback
+* Lowers music volume while speaking
 
-## 📊 System Checks & Health
-* **Live PC stats**: Shows real-time CPU, RAM, Disk space, and battery usage on the screen.
-* **Overheat safety warning**: Plays an alert sound and warns you if your CPU usage goes over 80%.
-* **Full system checkup**: Scan J.A.R.V.I.S. subsystems, API keys, database, and connection state.
-* **Weather updates**: Fetches the temperature and weather description for your city.
+## 📊 System Stats & Health
+* Monitors real-time CPU usage
+* Tracks RAM memory availability
+* Scans hard drive storage space
+* Warns if CPU load exceeds 80%
+* Performs full system checkup
+* Scans local weather coordinates
 
-## 📅 Scheduler & Todo List
-* **Itinerary tracker**: Displays today's agenda items directly on your HUD.
-* **HUD checklist**: Shows your top 3 incomplete Todo tasks on the screen.
+## 📅 Planner & Organizer
+* Displays today's calendar agenda
+* Displays top Todo checklists
+* Auto-updates checkboxes on GUI
 
-## 💻 PC & Window Control
-* **Volume controller**: Set volume to any percentage (0-100%), mute, or unmute.
-* **Music controller**: Play, pause, skip, or play previous tracks.
-* **App focus switcher**: Automatically minimize, maximize, or bring any open app (like Roblox, Chrome, Spotify) to the front by name.
-* **Desktop hotkeys**: Natively locks your PC, minimizes all windows, selects all text, or closes the active tab via voice command.
-* **Mobile status link**: Pings your phone and shows a green `ONLINE` or red `OFFLINE` badge on the screen.
+## 💻 Windows PC Control
+* Adjusts system volume (0-100%)
+* Mutes and unmutes PC audio
+* Plays, pauses, and skips music tracks
+* Minimizes and maximizes open windows
+* Brings specific apps to front by name
+* Locks the computer workstation
+* Shows or hides the desktop
+* Selects and copies all screen text
+* Closes active browser tabs or windows
+* Lights up phone connection status glow
 
-## 📬 Web & Social Media
-* **Social notifications watch**: Scans open tabs to notify you if you have unread messages on WhatsApp Web or Instagram.
-* **Web search**: Searches Google and tells you news, current events, or information.
-* **YouTube search**: Searches YouTube and plays requested music tracks on your browser.
+## 📬 Web & Social Automation
+* Checks unread WhatsApp notification badges
+* Checks unread Instagram notification badges
+* Searches Google for factual answers
+* Searches YouTube for video tracks
+* Plays specific songs on YouTube
+* Opens custom websites in browser
 
-## 📁 File & Storage Intelligence
-* **File locator**: Recursively searches your drives to locate files or folders by name.
-* **File editor**: Move, copy, rename, delete, or zip/unzip folders.
-* **Disk storage analyzer**: Scans your folders and tells you which ones are taking up the most space.
-* **Duplicate file scanner**: Finds and lists duplicate copies of files.
-* **Large file locator**: Finds files larger than 100MB or 5GB.
-* **Junk cleaner**: Deletes temporary cache files and emptys the Recycle Bin.
+## 📁 File & Storage Manager
+* Locates files recursively by name
+* Moves, copies, and renames files
+* Compresses folders into Zip archives
+* Extracts Zip archives into folders
+* Calculates directory footprint sizes
+* Finds and lists duplicate files
+* Locates files larger than 100MB
+* Clears Windows temp files and caches
 
-## 🧠 AI Vision & Core Features
-* **Screen describer**: Takes a screenshot and describes what you are doing in real-time.
-* **Text scanner (OCR)**: Transcribes written text from images or directly from your monitor screen.
-* **Image reader**: Reads and describes any photo or graphic file.
-* **Email helper**: Drafts and sends professional emails to your contacts.
-* **Image drawer**: Generates completely free, unlimited photorealistic images using the advanced FLUX model directly to your desktop (no API keys required).
+## 🧠 Advanced AI Features
+* Takes screenshots and describes your screen
+* Transcribes text from images (OCR)
+* Inspects and describes photo files
+* Drafts and sends professional emails
+* Generates Flux photorealistic images
 
-## ⚙️ Setup Wizards
-* **1-Click installer (`setup_jarvis.bat`)**: Automatically sets up J.A.R.V.I.S. on any computer, installs required software, and configures your API key.
+## ⚙️ Setup & Deployment
+* 1-Click automatic software installer
+* Protects API keys from uploading
