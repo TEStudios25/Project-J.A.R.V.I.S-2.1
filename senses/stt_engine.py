@@ -1,5 +1,48 @@
 import speech_recognition as sr
 import pygame
+import os
+import sys
+
+_whisper_model = None
+
+def get_whisper_model():
+    global _whisper_model
+    if _whisper_model is None:
+        try:
+            from faster_whisper import WhisperModel
+            print("\n[🎙️ STT Engine]: Initializing Local Faster-Whisper (tiny, int8 CPU)...")
+            _whisper_model = WhisperModel("tiny", device="cpu", compute_type="int8")
+            print("[🎙️ STT Engine]: Local Faster-Whisper Model Ready.")
+        except Exception as e:
+            print(f"[🎙️ STT Engine Error]: Failed to load Faster-Whisper: {e}")
+    return _whisper_model
+
+def recognize_audio_local(audio) -> str:
+    model = get_whisper_model()
+    if model is None:
+        return ""
+    
+    scratch_dir = r"C:\Users\This Pc\.gemini\antigravity\scratch"
+    os.makedirs(scratch_dir, exist_ok=True)
+    temp_wav_path = os.path.join(scratch_dir, "temp_voice.wav")
+    
+    try:
+        with open(temp_wav_path, "wb") as f:
+            f.write(audio.get_wav_data())
+            
+        segments, info = model.transcribe(temp_wav_path, task="translate")
+        text = "".join([segment.text for segment in segments]).strip().lower()
+        return text
+    except Exception as e:
+        print(f"[🎙️ STT Engine]: Local transcription error -> {e}")
+        return ""
+    finally:
+        try:
+            if os.path.exists(temp_wav_path):
+                os.remove(temp_wav_path)
+        except Exception:
+            pass
+
 
 # 1. Create the recognizer globally so it remembers its settings
 recognizer = sr.Recognizer()
@@ -106,8 +149,22 @@ def listen(check_active_func=None) -> str:
             except Exception:
                 rms = 0
 
-            # Translate the audio
-            query = recognizer.recognize_google(audio).lower()
+            # Translate the audio (Telugu/others to English)
+            use_local = os.getenv("USE_LOCAL_WHISPER", "true").lower() == "true"
+            query = ""
+            if use_local:
+                try:
+                    query = recognize_audio_local(audio)
+                except Exception as e:
+                    print(f"[System]: Local Whisper error: {e}")
+            
+            if not query:
+                try:
+                    query = recognizer.recognize_google(audio).lower()
+                except Exception as e:
+                    # Reraise or handle to catch UnknownValueError / RequestError
+                    raise e
+
             
             # Set whisper mode state on TTS engine
             import senses.tts_engine

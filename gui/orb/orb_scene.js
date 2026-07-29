@@ -289,8 +289,10 @@
 
   // --- ANIMATION LOOP ---
   const clock = new THREE.Clock();
+  let renderPaused = false;
 
   function animate() {
+    if (renderPaused) return; // Exit render loop entirely!
     requestAnimationFrame(animate);
     const t = clock.getElapsedTime();
 
@@ -330,6 +332,26 @@
       composer.render();
     }
   }
+
+  // Poll status endpoint every 500ms
+  setInterval(async () => {
+    try {
+      const response = await fetch('/status');
+      const data = await response.json();
+      if (data.paused !== renderPaused) {
+        renderPaused = data.paused;
+        if (!renderPaused) {
+          // Re-trigger animate loop
+          animate();
+          console.log("J.A.R.V.I.S. Orb Render Loop Resumed.");
+        } else {
+          console.log("J.A.R.V.I.S. Orb Render Loop Suspended.");
+        }
+      }
+    } catch (e) {
+      // Ignore network errors
+    }
+  }, 500);
 
   animate();
 

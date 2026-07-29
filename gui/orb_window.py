@@ -14,12 +14,38 @@ if sys.platform == "win32":
 
 ORB_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "orb"))
 
+is_paused = False
+
 class QuietHTTPRequestHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=ORB_DIR, **kwargs)
 
     def log_message(self, format, *args):
         pass # Suppress HTTP access log noise
+
+    def do_GET(self):
+        global is_paused
+        if self.path == "/pause":
+            is_paused = True
+            self.send_response(200)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(b"paused")
+        elif self.path == "/resume":
+            is_paused = False
+            self.send_response(200)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(b"resumed")
+        elif self.path == "/status":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            status_json = '{"paused": ' + ('true' if is_paused else 'false') + '}'
+            self.wfile.write(status_json.encode('utf-8'))
+        else:
+            super().do_GET()
 
 def start_local_http_server(port=54321):
     try:

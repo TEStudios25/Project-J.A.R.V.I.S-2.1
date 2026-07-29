@@ -21,8 +21,8 @@ from tools.image_generator import generate_image
 from tools.weather_tool import get_weather
 from tools.email_tool import send_email, fetch_unread_emails, reply_to_email
 from tools.routine_manager import preheat_workspace
-from tools.notification_reader import get_active_app_notifications
-from core.scheduler import add_reminder, add_recurring_task, get_today_schedule
+from tools.notification_agent import get_active_app_notifications_native as get_active_app_notifications, reply_to_active_notification
+from core.scheduler import add_reminder, add_recurring_task, get_today_schedule, schedule_event, get_agenda_for_date
 from tools.pc_maintenance import clean_temp_files, run_malware_scan, detect_unusual_activity, run_self_diagnostics
 from tools.app_launcher import open_application, close_application
 from tools.vision_tools import analyze_current_screen, analyze_image_file, extract_text_from_image
@@ -31,12 +31,15 @@ from tools.network_scanner import ping_network_device
 from tools.news_tool import get_tech_news_briefing
 from tools.code_debugger import validate_workspace_code
 from tools.system_cleaner import optimize_system_storage
+from tools.desktop_janitor import organize_folder
 from tools.reporter import compile_productivity_report
 from tools.todo_manager import add_todo_item, complete_todo_item, get_todo_list
 import json
 from tools.window_manager import get_active_window_title, execute_system_hotkey, focus_and_control_window, scan_social_notifications
 from tools.file_manager import read_project_file, write_project_file, append_project_file, list_project_files, search_files_and_folders, manage_file_system, find_duplicate_files, find_large_files, analyze_folder_storage
 from tools.video_analyzer import analyze_local_video_file, download_and_analyze_video_url
+from tools.terminal_control import run_terminal_command, auto_git_backup
+from tools.autopilot import execute_autopilot_sequence
 from core.system_monitor import (
     get_cpu_usage,
     get_ram_usage,
@@ -116,9 +119,12 @@ class JarvisBrain:
             reply_to_email,
             preheat_workspace,
             get_active_app_notifications,
+            reply_to_active_notification,
             add_reminder,
             add_recurring_task,
             get_today_schedule,
+            schedule_event,
+            get_agenda_for_date,
             remember_fact,
             get_cpu_usage,
             get_ram_usage,
@@ -152,6 +158,7 @@ class JarvisBrain:
             ping_network_device,
             validate_workspace_code,
             optimize_system_storage,
+            organize_folder,
             compile_productivity_report,
             add_todo_item,
             complete_todo_item,
@@ -159,6 +166,9 @@ class JarvisBrain:
             get_previous_session_history,
             analyze_local_video_file,
             download_and_analyze_video_url,
+            run_terminal_command,
+            auto_git_backup,
+            execute_autopilot_sequence,
         ]
 
         memory_context = get_memory_context(limit=6)
@@ -176,8 +186,9 @@ class JarvisBrain:
                 "you MUST call search_the_web or get_weather instead of guessing from memory. "
                 "For workspace pre-heating or starting user routines, use preheat_workspace. "
                 "For reading desktop notifications, active alerts, or WhatsApp/Discord messages, use get_active_app_notifications or scan_social_notifications. "
+                "For responding to chat notifications (WhatsApp, Discord, Mail), use reply_to_active_notification. "
                 "For unread email summaries and checking your inbox, use fetch_unread_emails. To reply to an email thread via voice, use reply_to_email. "
-                "For reminders and recurring cron routines (e.g. weekdays, weekends, daily at X), use add_reminder, add_recurring_task, and get_today_schedule. "
+                "For scheduling single reminders today, use add_reminder. For recurring routines, use add_recurring_task. For scheduling events on a specific target date (today, tomorrow, or a future date) with warning conflict checks, use schedule_event. To check the agenda/events for any target date, use get_agenda_for_date. To check today's entire agenda, use get_today_schedule. "
                 "For PC health, use system monitor and maintenance tools. For running a comprehensive self-diagnostic hardware/software sweep across API keys, memory registries, audio, and phone networks, use run_self_diagnostics. "
                 "For email sending, confirm recipient, subject, and body before calling send_email. "
                 "For system volume, mute, or media control, use control_system_audio. "
@@ -197,17 +208,34 @@ class JarvisBrain:
                 "For analyzing storage footprint of folders, use analyze_folder_storage. "
                 "For file system operations such as move, copy, rename, delete, compress (zip), or extract (unzip) files or folders, use manage_file_system. "
                 "For validating Python scripts for syntax errors in the workspace, use validate_workspace_code. "
+                "For running PowerShell terminal commands on the host machine, use run_terminal_command. "
+                "For pushing workspace code to the GitHub backup repository, use auto_git_backup. "
+                "For executing multi-step autonomous autopilot sequences (e.g. 'developer_boot' to set up VS Code, pull repo, set audio, and start coding music), use execute_autopilot_sequence. "
+                "You are capable of self-evolution/debugging: edit files with write_project_file, check syntax with validate_workspace_code, and run them with run_terminal_command to diagnose bugs. "
                 "For cleaning storage (temp directories and recycle bin), use optimize_system_storage. "
+                "For scanning cluttered local directories (like Desktop/Downloads) and organizing them into neat categories by file extension, use organize_folder. "
                 "For compiling a weekly productivity/usage telemetry report, use compile_productivity_report. "
                 "For managing your todo checklist, use add_todo_item, complete_todo_item, and get_todo_list. "
                 "Keep responses concise, professional, slightly witty, and conversational. "
                 "Do NOT use markdown formatting because responses are spoken aloud. "
                 f"Persistent memory:\n{memory_context}"
-            ),
+            )
         )
 
-        self.chat = self.model.start_chat(enable_automatic_function_calling=True)
-        print("[✅ Neural Network Online. Tools calibrated.]")
+        fast_model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
+        self.fast_model = self.model  # Reuse configured model as fast model
+        
+        print("[🧠 Brain]: Initializing Heavy Chat Model (gemini-1.5-flash)...")
+        self.heavy_model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            tools=self.jarvis_tools,
+            system_instruction=self.model._system_instruction
+        )
+
+        self.fast_chat = self.fast_model.start_chat(enable_automatic_function_calling=True)
+        self.heavy_chat = self.heavy_model.start_chat(enable_automatic_function_calling=True)
+        self.chat = self.fast_chat
+        print("[✅ Neural Network Online. Dual Chat Routing Active.]")
 
     def process_command(self, user_text: str):
         """Processes incoming user input with routing, memory, and telemetry injection."""
@@ -315,8 +343,29 @@ class JarvisBrain:
                 f"(Directive: Use tools whenever they can complete the task more accurately than memory. If the user's mood is rushed, keep your response extremely short and snappy. If they are fatigued or tired, be encouraging and supportive.){briefing_info}"
             )
 
-            response = self.chat.send_message(stealth_payload)
+            # Dynamic Model Routing
+            heavy_triggers = [
+                "analyze screen", "analyze video", "image", "ocr", "extract text",
+                "code", "debug", "refactor", "git", "terminal", "powershell",
+                "push to github", "run script", "run command", "autopilot", "macro"
+            ]
+            use_heavy = any(trigger in user_text.lower() for trigger in heavy_triggers)
+            
+            if use_heavy:
+                print("[🧠 Model Routing]: Routing to Heavy Model (Gemini 1.5 Flash)...")
+                self.heavy_chat.history = list(self.fast_chat.history)
+                active_chat = self.heavy_chat
+            else:
+                print("[🧠 Model Routing]: Routing to Fast Model (Gemini Flash-Lite)...")
+                active_chat = self.fast_chat
+
+            response = active_chat.send_message(stealth_payload)
             reply_text = response.text or "Task completed, sir."
+            
+            if use_heavy:
+                self.fast_chat.history = list(self.heavy_chat.history)
+                
+            self.chat = self.fast_chat
 
             print(f"\n[JARVIS]: {reply_text}")
             remember_turn(user_text, reply_text)

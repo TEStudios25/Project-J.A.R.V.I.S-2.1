@@ -49,24 +49,7 @@ def _parse_time_to_minutes(time_str: str) -> int | None:
 
 def add_reminder(task: str, time_str: str) -> str:
     """Saves a single reminder task with a time in HH:MM or 05:00 PM format for today."""
-    print(f"\n[📆 J.A.R.V.I.S. is logging a new reminder: '{task}' at {time_str}...]")
-
-    schedule_data = _load_schedule()
-    today = datetime.now().strftime("%Y-%m-%d")
-
-    if today not in schedule_data:
-        schedule_data[today] = []
-
-    schedule_data[today].append(
-        {
-            "id": str(uuid.uuid4()),
-            "time": time_str,
-            "task": task,
-            "status": "pending",
-        }
-    )
-    _save_schedule(schedule_data)
-    return f"Successfully logged reminder: '{task}' scheduled for {time_str} today."
+    return schedule_event(task, time_str, "today")
 
 
 def add_recurring_task(task: str, time_str: str, days_filter: str = "daily") -> str:
@@ -189,3 +172,94 @@ def mark_reminder_notified(reminder_id: str) -> None:
             item["last_notified_date"] = today
             _save_schedule(schedule_data)
             return
+
+def _parse_target_date(date_str: str) -> str:
+    if not date_str:
+        return datetime.now().strftime("%Y-%m-%d")
+        
+    date_str_clean = date_str.lower().strip()
+    if date_str_clean == "today":
+        return datetime.now().strftime("%Y-%m-%d")
+    elif date_str_clean == "tomorrow":
+        return (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+        
+    # Try parsing common formats
+    from datetime import timedelta
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%m/%d/%Y", "%d/%m/%Y", "%B %d, %Y", "%B %d"):
+        try:
+            parsed = datetime.strptime(date_str_clean, fmt)
+            if "%Y" not in fmt:
+                parsed = parsed.replace(year=datetime.now().year)
+            return parsed.strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return datetime.now().strftime("%Y-%m-%d")
+
+def check_time_conflict(target_date: str, time_str: str) -> str | None:
+    new_minutes = _parse_time_to_minutes(time_str)
+    if new_minutes is None:
+        return None
+        
+    schedule_data = _load_schedule()
+    events = schedule_data.get(target_date, [])
+    
+    for event in events:
+        event_time = event.get("time", "")
+        event_minutes = _parse_time_to_minutes(event_time)
+        if event_minutes is not None:
+            # Check overlap within 30 minutes (±30 mins)
+            if abs(new_minutes - event_minutes) < 30:
+                return f"'{event.get('task')}' scheduled at {event_time}"
+    return None
+
+def schedule_event(task: str, time_str: str, date_str: str = "today") -> str:
+    """
+    Saves a calendar event with a description, time (e.g. '03:00 PM' or '15:00'),
+    and a specific target date (e.g. 'today', 'tomorrow', or '2026-08-01').
+    Checks for scheduling conflicts with existing events on that day.
+    """
+    target_date = _parse_target_date(date_str)
+    print(f"\n[📆 Calendar Planner]: Scheduling '{task}' on {target_date} at {time_str}...")
+    
+    # Check for conflicts
+    conflict = check_time_conflict(target_date, time_str)
+    conflict_warn = ""
+    if conflict:
+        conflict_warn = f"Warning: Time conflict! You already have {conflict} scheduled on that day. "
+        print(f"[📆 Calendar Planner]: Conflict detected! -> {conflict}")
+        
+    schedule_data = _load_schedule()
+    if target_date not in schedule_data:
+        schedule_data[target_date] = []
+        
+    new_event = {
+        "id": str(uuid.uuid4()),
+        "time": time_str,
+        "task": task,
+        "status": "pending"
+    }
+    schedule_data[target_date].append(new_event)
+    _save_schedule(schedule_data)
+    
+    date_formatted = datetime.strptime(target_date, "%Y-%m-%d").strftime("%A, %B %d, %Y")
+    return f"{conflict_warn}Successfully scheduled: '{task}' for {date_formatted} at {time_str}."
+
+def get_agenda_for_date(date_str: str = "today") -> str:
+    """
+    Retrieves the planned agenda/events scheduled for a specific date (e.g. 'today', 'tomorrow', or a target date).
+    """
+    target_date = _parse_target_date(date_str)
+    print(f"\n[📆 Calendar Planner]: Checking agenda for {target_date}...")
+    
+    schedule_data = _load_schedule()
+    events = schedule_data.get(target_date, [])
+    
+    date_formatted = datetime.strptime(target_date, "%Y-%m-%d").strftime("%A, %B %d, %Y")
+    
+    if not events:
+        return f"You have no tasks or events scheduled for {date_formatted}, sir."
+        
+    report = f"Agenda for {date_formatted}:\n"
+    for idx, e in enumerate(events, 1):
+        report += f"{idx}. [{e['time']}] {e['task']} ({e['status']})\n"
+    return report

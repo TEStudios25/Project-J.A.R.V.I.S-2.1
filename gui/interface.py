@@ -393,6 +393,12 @@ class JarvisGUI(QMainWindow):
         self.audio_shield_timer.timeout.connect(self.check_audio_shield)
         self.audio_shield_timer.start(1500)
 
+        # Active Clipboard Listener
+        from PyQt5.QtWidgets import QApplication
+        self.clipboard = QApplication.clipboard()
+        self.clipboard.dataChanged.connect(self.handle_clipboard_change)
+        self.last_clipboard_text = ""
+
         # Register global keyboard hotkey Alt+V (MOD_ALT = 0x0001, VK_V = 0x56)
         try:
             import ctypes
@@ -1545,6 +1551,33 @@ class JarvisGUI(QMainWindow):
         return super().nativeEvent(eventType, message)
 
     def check_audio_shield(self):
+        # 1. Full-screen active window detection (Smart Telemetry Throttling)
+        try:
+            import ctypes
+            from ctypes import wintypes
+            user32 = ctypes.windll.user32
+            hwnd = user32.GetForegroundWindow()
+            if hwnd:
+                rect = ctypes.wintypes.RECT()
+                user32.GetWindowRect(hwnd, ctypes.byref(rect))
+                screen_w = user32.GetSystemMetrics(0)
+                screen_h = user32.GetSystemMetrics(1)
+                
+                width = rect.right - rect.left
+                height = rect.bottom - rect.top
+                
+                is_fullscreen = (width >= screen_w and height >= screen_h)
+                
+                if is_fullscreen:
+                    if self.audio_shield_timer.interval() != 5000:
+                        self.audio_shield_timer.setInterval(5000)
+                        print("[System Telemetry]: Full-screen window detected. Throttling checks to 5.0s.")
+                else:
+                    if self.audio_shield_timer.interval() != 1500:
+                        self.audio_shield_timer.setInterval(1500)
+        except Exception:
+            pass
+
         if not self.mic_active:
             return
             
@@ -1648,6 +1681,87 @@ class JarvisGUI(QMainWindow):
 
         # 4. Standard Response Card (No-op: Conversational chat is only spoken, keeping HUD clean)
         pass
+
+    def _pause_orb(self):
+        try:
+            import urllib.request
+            threading.Thread(target=lambda: urllib.request.urlopen("http://127.0.0.1:54321/pause", timeout=0.5), daemon=True).start()
+        except Exception:
+            pass
+
+    def _resume_orb(self):
+        try:
+            import urllib.request
+            threading.Thread(target=lambda: urllib.request.urlopen("http://127.0.0.1:54321/resume", timeout=0.5), daemon=True).start()
+        except Exception:
+            pass
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._resume_orb()
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self._pause_orb()
+
+    def handle_clipboard_change(self):
+        mime_data = self.clipboard.mimeData()
+        if mime_data.hasText():
+            text = mime_data.text().strip()
+            if text and text != self.last_clipboard_text:
+                self.last_clipboard_text = text
+                
+                # Check for YouTube/Instagram Reels URLs
+                import re
+                url_pattern = r"(youtube\.com/watch\?v=|youtu\.be/|instagram\.com/reel/|instagram\.com/p/)"
+                if re.search(url_pattern, text):
+                    print(f"[📋 Clipboard]: Detected video URL: {text}")
+                    alert_msg = f"Clipboard Alert: Detected a video URL in your clipboard: '{text}'. Would you like me to analyze it, Sir?"
+                    self.append_text_signal.emit("J.A.R.V.I.S.", alert_msg)
+                    self.add_notif_signal.emit("Video link copied to clipboard.")
+                    self.play_sfx("success.wav")
+                    
+                    # Speak alert
+                    from senses.tts_engine import speak
+                    threading.Thread(target=speak, args=("I detected a video link in your clipboard, Sir. Would you like me to run a multimodal scan?",), daemon=True).start()
+                    
+        elif mime_data.hasImage():
+            image = self.clipboard.image()
+            if not image.isNull():
+                print("[📋 Clipboard]: Image detected. Starting background OCR pre-scanning...")
+                threading.Thread(target=self.run_background_clipboard_ocr, args=(image,), daemon=True).start()
+
+    def run_background_clipboard_ocr(self, qimage):
+        import os
+        # Create data directory if not exists
+        os.makedirs("data", exist_ok=True)
+        scratch_dir = r"C:\Users\This Pc\.gemini\antigravity\scratch"
+        os.makedirs(scratch_dir, exist_ok=True)
+        temp_img_path = os.path.join(scratch_dir, "temp_clipboard.png")
+        try:
+            qimage.save(temp_img_path, "PNG")
+            from tools.vision_tools import extract_text_from_image
+            ocr_text = extract_text_from_image(temp_img_path)
+            
+            ocr_file = os.path.join("data", "cached_ocr.txt")
+            if "Error" not in ocr_text and ocr_text.strip():
+                with open(ocr_file, "w", encoding="utf-8") as f:
+                    f.write(ocr_text.strip())
+                print(f"[📋 Clipboard OCR]: Pre-scanned text successfully. Cached locally.")
+                self.append_text_signal.emit("J.A.R.V.I.S.", "Clipboard Alert: Pre-scanned copied image text and loaded it into active memory buffer. Ask me about the copied image anytime, Sir!")
+                self.add_notif_signal.emit("Clipboard image OCR completed.")
+                self.play_sfx("success.wav")
+            else:
+                if os.path.exists(ocr_file):
+                    os.remove(ocr_file)
+        except Exception as e:
+            print(f"[📋 Clipboard OCR Error]: {e}")
+        finally:
+            try:
+                if os.path.exists(temp_img_path):
+                    os.remove(temp_img_path)
+            except Exception:
+                pass
 
 
 

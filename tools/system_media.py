@@ -42,24 +42,45 @@ user32.keybd_event.restype = None
 def get_clipboard_content() -> str:
     """
     Reads and returns the text currently stored in the Windows clipboard.
-    If the clipboard is empty or does not contain text, returns an empty string.
+    If the clipboard contains an image, it returns the cached OCR text of that image if available.
     """
     print("\n[📋 J.A.R.V.I.S. is reading clipboard data stream...]")
-    if not user32.OpenClipboard(None):
-        return "Error: Could not open Windows clipboard."
+    text_result = ""
+    if user32.OpenClipboard(None):
+        try:
+            if user32.IsClipboardFormatAvailable(CF_UNICODETEXT):
+                h_clip_mem = user32.GetClipboardData(CF_UNICODETEXT)
+                if h_clip_mem:
+                    p_clip_mem = kernel32.GlobalLock(h_clip_mem)
+                    if p_clip_mem:
+                        text_result = ctypes.c_wchar_p(p_clip_mem).value or ""
+                        kernel32.GlobalUnlock(h_clip_mem)
+        except Exception as e:
+            print(f"Error while reading clipboard: {str(e)}")
+        finally:
+            user32.CloseClipboard()
+            
+    if text_result:
+        # Clear cached image OCR since text is now active
+        try:
+            ocr_path = os.path.join("data", "cached_ocr.txt")
+            if os.path.exists(ocr_path):
+                os.remove(ocr_path)
+        except Exception:
+            pass
+        return text_result
+
+    # Check if there is cached OCR text from an image
     try:
-        if user32.IsClipboardFormatAvailable(CF_UNICODETEXT):
-            h_clip_mem = user32.GetClipboardData(CF_UNICODETEXT)
-            if h_clip_mem:
-                p_clip_mem = kernel32.GlobalLock(h_clip_mem)
-                if p_clip_mem:
-                    text = ctypes.c_wchar_p(p_clip_mem).value
-                    kernel32.GlobalUnlock(h_clip_mem)
-                    return text or ""
-    except Exception as e:
-        return f"Error while reading clipboard: {str(e)}"
-    finally:
-        user32.CloseClipboard()
+        ocr_path = os.path.join("data", "cached_ocr.txt")
+        if os.path.exists(ocr_path):
+            with open(ocr_path, "r", encoding="utf-8") as f:
+                cached_text = f.read().strip()
+            if cached_text:
+                return f"[Cached OCR Text from copied image]:\n{cached_text}"
+    except Exception:
+        pass
+        
     return "Clipboard is empty or does not contain readable text."
 
 def set_clipboard_content(text: str) -> str:
