@@ -17,6 +17,13 @@ def get_whisper_model():
             print(f"[🎙️ STT Engine Error]: Failed to load Faster-Whisper: {e}")
     return _whisper_model
 
+def init_whisper_async():
+    import threading
+    threading.Thread(target=get_whisper_model, daemon=True).start()
+
+# Initialize Whisper model in parallel on boot to eliminate lag
+init_whisper_async()
+
 def recognize_audio_local(audio) -> str:
     model = get_whisper_model()
     if model is None:

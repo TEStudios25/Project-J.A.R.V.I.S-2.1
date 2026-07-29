@@ -5,7 +5,7 @@ import socket
 import threading
 import subprocess
 import webview
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 
 if sys.platform == "win32":
     for stream in (sys.stdout, sys.stderr):
@@ -49,7 +49,7 @@ class QuietHTTPRequestHandler(SimpleHTTPRequestHandler):
 
 def start_local_http_server(port=54321):
     try:
-        server = HTTPServer(('127.0.0.1', port), QuietHTTPRequestHandler)
+        server = ThreadingHTTPServer(('127.0.0.1', port), QuietHTTPRequestHandler)
         t = threading.Thread(target=server.serve_forever, daemon=True)
         t.start()
         print(f"[🌐 Local HTTP Server active on http://127.0.0.1:{port}]")

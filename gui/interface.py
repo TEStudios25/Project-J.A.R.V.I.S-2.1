@@ -399,14 +399,8 @@ class JarvisGUI(QMainWindow):
         self.clipboard.dataChanged.connect(self.handle_clipboard_change)
         self.last_clipboard_text = ""
 
-        # Register global keyboard hotkey Alt+V (MOD_ALT = 0x0001, VK_V = 0x56)
-        try:
-            import ctypes
-            self.user32 = ctypes.windll.user32
-            # Hotkey ID = 200
-            self.user32.RegisterHotKey(int(self.winId()), 200, 0x0001, 0x56)
-        except Exception as e:
-            print(f"[Hotkey Registry Warning]: {e}")
+        # Global hotkey registration deferred to showEvent
+        print("[System]: Global hotkey deferred to window visibility sequence.")
 
     def play_sfx(self, sound_name: str):
         """Plays custom synthesized Sci-Fi audio chimes safely via pygame soundboard mixer."""
@@ -1534,7 +1528,16 @@ class JarvisGUI(QMainWindow):
         import ctypes
         from ctypes import wintypes
         # WM_HOTKEY = 0x0312
-        if eventType == "windows_generic_MSG":
+        evt_type = ""
+        try:
+            if isinstance(eventType, (bytes, bytearray)):
+                evt_type = eventType.decode('utf-8', errors='ignore')
+            else:
+                evt_type = str(eventType)
+        except Exception:
+            pass
+            
+        if "windows_generic_msg" in evt_type.lower():
             msg = ctypes.wintypes.MSG.from_address(int(message))
             if msg.message == 0x0312:
                 if msg.wParam == 200: # Alt+V Hotkey ID
@@ -1696,9 +1699,23 @@ class JarvisGUI(QMainWindow):
         except Exception:
             pass
 
+    def register_global_hotkeys(self):
+        try:
+            import ctypes
+            self.user32 = ctypes.windll.user32
+            hwnd = int(self.winId())
+            self.user32.UnregisterHotKey(hwnd, 200)
+            if self.user32.RegisterHotKey(hwnd, 200, 0x0001, 0x56):
+                print(f"[System Hotkey]: Successfully registered Alt+V global shortcut (HWND: {hwnd})")
+            else:
+                print("[System Hotkey Warning]: Failed to register Alt+V hotkey.")
+        except Exception as e:
+            print(f"[System Hotkey Warning]: Error registering global hotkeys: {e}")
+
     def showEvent(self, event):
         super().showEvent(event)
         self._resume_orb()
+        self.register_global_hotkeys()
 
     def hideEvent(self, event):
         super().hideEvent(event)
