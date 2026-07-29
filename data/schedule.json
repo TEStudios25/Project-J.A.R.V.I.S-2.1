@@ -79,5 +79,19 @@
             "days": "weekdays",
             "last_notified_date": "2026-07-24"
         }
+    ],
+    "2026-07-30": [
+        {
+            "id": "2ed3c5c3-3281-46ac-aaf6-5e1155efb17a",
+            "time": "03:00 PM",
+            "task": "Autopilot Code Review",
+            "status": "pending"
+        },
+        {
+            "id": "45753155-673b-44b1-9d48-3e6e2dfadcb1",
+            "time": "03:00 PM",
+            "task": "Double Booking Test",
+            "status": "pending"
+        }
     ]
 }

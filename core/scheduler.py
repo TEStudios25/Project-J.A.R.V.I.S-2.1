@@ -2,7 +2,7 @@ import os
 import sys
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 if sys.platform == "win32":
     for stream in (sys.stdout, sys.stderr):
@@ -184,7 +184,6 @@ def _parse_target_date(date_str: str) -> str:
         return (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
         
     # Try parsing common formats
-    from datetime import timedelta
     for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%m/%d/%Y", "%d/%m/%Y", "%B %d, %Y", "%B %d"):
         try:
             parsed = datetime.strptime(date_str_clean, fmt)
