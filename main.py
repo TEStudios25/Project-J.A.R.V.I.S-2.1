@@ -12,16 +12,17 @@ from PyQt5.QtWidgets import QApplication
 
 # --- PATH ENFORCEMENT ---
 # Ensures main.py can smoothly read all folders (core, senses, tools)
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Import the Graphic Interface and the Mouth
+# Import the Graphic Interface, Mouth, and 3D Holographic Core Window
 from gui.interface import JarvisGUI
+from gui.orb_window import start_orb_thread
 from senses.tts_engine import speak
 
 # (Note: If your security.py is inside the 'core' folder, change this to: from core.security import verify_access)
 from core.security import verify_access 
 
-def system_boot_sequence():
+def system_boot_sequence(workspace_ref=None):
     """Plays the epic sci-fi startup terminal sequence and verbal greeting."""
     print("\n=======================================================")
     print("||        PROJECT J.A.R.V.I.S. 2.x INITIATED         ||")
@@ -31,32 +32,40 @@ def system_boot_sequence():
     # Boot Dialog 1
     msg1 = "Powering up the Systems"
     print(f"[🔋 System]: {msg1}...")
-    speak(msg1)
     
     # Boot Dialog 2
     msg2 = "Allocating neural network memory modules"
     print(f"[🧠 System]: {msg2}...")
-    speak(msg2)
     
     # Boot Dialog 3
     msg3 = "Establishing secure connection to global servers"
     print(f"[📡 System]: {msg3}...")
-    speak(msg3)
     
     # Boot Dialog 4
     msg4 = "Calibrating Voice and Vision interfaces"
     print(f"[⚙️ System]: {msg4}...")
-    speak(msg4)
     
     # Boot Dialog 5
     msg5 = "Graphic User Interface locked and loaded"
     print(f"[✅ System]: {msg5}.")
-    speak(msg5)
     
     # The iconic startup phrase (Officially addressing Mr. Pranav!)
-    final_msg = "All systems online. Good to see you, Mr. Pranav. I am ready for your orders."
+    import datetime
+    hour = datetime.datetime.now().hour
+    if hour < 12:
+        final_msg = "Good morning, Sir. J.A.R.V.I.S. is online, caffeinated, and ready for your orders. No cap."
+    elif 12 <= hour < 17:
+        final_msg = "Good afternoon, Sir. System is online, green across the board. What are we cooking today?"
+    else:
+        final_msg = "Good evening, Sir. Systems are online and fully optimized. Let's make things happen."
+
     print(f"\n[🤖 J.A.R.V.I.S.]: {final_msg}\n")
     speak(final_msg)
+
+    # Start autonomous reminder service ONLY AFTER boot dialogues complete
+    if workspace_ref and hasattr(workspace_ref, "reminder_service"):
+        time.sleep(1.0)
+        workspace_ref.reminder_service.start()
 
 def main():
     # 1. Initialize the QApplication first so graphical windows/dialogs can render
@@ -65,14 +74,17 @@ def main():
     # 2. Run mainframe security verification dialog
     verify_access()
         
-    # 3. Start the visual boot logs and voice greeting in the background
-    threading.Thread(target=system_boot_sequence, daemon=True).start()
-    
+    # 3. Launch 3D Holographic Cyan Orb Window concurrently
+    start_orb_thread()
+
     # 4. Launch the Front-Face GUI
     workspace = JarvisGUI()
-    workspace.show()
+    workspace.showMaximized()
+
+    # 5. Start the visual boot logs and voice greeting in the background
+    threading.Thread(target=system_boot_sequence, args=(workspace,), daemon=True).start()
     
-    # 5. Keep the application running flawlessly
+    # 6. Keep the application running flawlessly
     sys.exit(app.exec_())
 
 if __name__ == "__main__":

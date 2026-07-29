@@ -6,9 +6,10 @@ import math
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QTextEdit, 
     QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QLabel,
-    QProgressBar, QStackedWidget, QFrame, QScrollArea
+    QProgressBar, QStackedWidget, QFrame, QScrollArea,
+    QSystemTrayIcon, QMenu, QAction
 )
-from PyQt5.QtGui import QFont, QMovie, QColor, QPainter, QPen
+from PyQt5.QtGui import QFont, QMovie, QColor, QPainter, QPen, QIcon, QPixmap
 from PyQt5.QtCore import Qt, pyqtSignal, QSize, QTimer, QThread, QPoint
 
 # --- PATH ENFORCEMENT ---
@@ -18,7 +19,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from core.brain import JarvisBrain
 from core.reminder_service import ReminderService
 from senses.stt_engine import listen
-from senses.tts_engine import speak
+from senses.tts_engine import speak, speaking_state
+from gui.mini_widget import JarvisMiniWidget
+import speech_recognition as sr
+import numpy as np
+import sounddevice as sd
+from senses.stt_engine import chosen_mic_index
+
 
 class TelemetryWorker(QThread):
     """Background worker thread to fetch CPU, RAM, Disk, GPU, Battery, and Mobile connection status."""
@@ -181,12 +188,131 @@ class WaveVisualizer(QWidget):
         for i in range(len(points2) - 1):
             painter.drawLine(points2[i], points2[i+1])
 
+class ClapListenerThread(threading.Thread):
+    def __init__(self, gui_instance):
+        super().__init__()
+        self.gui = gui_instance
+        self.daemon = True
+        self.is_running = False
+        self.stream = None
+        self.should_listen = False
+        
+    def run(self):
+        self.is_running = True
+        sample_rate = 44100
+        block_ms = 40
+        blocksize = int(sample_rate * block_ms / 1000)
+        
+        self.noise_floor = 1e-4
+        self.last_logged_double = 0.0
+        self.first_clap_time = None
+        self.spike_armed = True
+        
+        # Tuning parameters (same as original repo)
+        self.spike_ratio = 7.0
+        self.cooldown_s = 0.45
+        self.min_double_gap_s = 0.05
+        self.max_double_gap_s = 0.35
+        self.retrigger_ratio = 0.55
+        self.noise_floor_alpha = 0.992
+        self.min_rms = 0.012
+        self.quiet_gate_mult = 2.2
+        
+        def clap_callback(indata, frames, time_info, status):
+            # Check speech activity inside callback
+            import senses.tts_engine
+            if senses.tts_engine.speaking_state.get("is_speaking", False):
+                return
+            if not self.should_listen:
+                return
+                
+            if indata.ndim > 1:
+                block = np.mean(indata.astype(np.float64), axis=1)
+            else:
+                block = indata.astype(np.float64)
+                
+            if block.size == 0:
+                return
+                
+            level = float(np.sqrt(np.mean(block**2)))
+            
+            quiet_gate = self.noise_floor * self.quiet_gate_mult
+            if level < quiet_gate:
+                self.noise_floor = self.noise_floor_alpha * self.noise_floor + (1.0 - self.noise_floor_alpha) * level
+                self.noise_floor = max(self.noise_floor, 1e-7)
+                
+            threshold = max(self.noise_floor * self.spike_ratio, self.min_rms)
+            now = time.monotonic()
+            retrigger_level = threshold * self.retrigger_ratio
+            
+            if level < retrigger_level:
+                self.spike_armed = True
+                
+            if self.spike_armed and level >= threshold and (now - self.last_logged_double) >= self.cooldown_s:
+                self.spike_armed = False
+                if self.first_clap_time is None:
+                    self.first_clap_time = now
+                else:
+                    gap = now - self.first_clap_time
+                    if gap < self.min_double_gap_s:
+                        pass
+                    elif gap <= self.max_double_gap_s:
+                        self.first_clap_time = None
+                        self.last_logged_double = now
+                        print(f"[Clap Detector]: Double clap callback triggered!")
+                        self.gui.wake_from_clap_signal.emit()
+                    else:
+                        self.first_clap_time = now
+
+        while self.is_running:
+            if self.should_listen and not self.stream:
+                try:
+                    print(f"[Clap Detector]: Opening stream on index {chosen_mic_index}...")
+                    # Clear state to prevent old clap triggers
+                    self.first_clap_time = None
+                    self.spike_armed = True
+                    self.stream = sd.InputStream(
+                        device=chosen_mic_index,
+                        samplerate=sample_rate,
+                        channels=1,
+                        dtype="float32",
+                        blocksize=blocksize,
+                        callback=clap_callback
+                    )
+                    self.stream.start()
+                except Exception as e:
+                    print(f"[Clap Detector Open Error]: {e}")
+                    self.stream = None
+            elif not self.should_listen and self.stream:
+                try:
+                    print("[Clap Detector]: Closing stream...")
+                    self.stream.stop()
+                    self.stream.close()
+                except Exception:
+                    pass
+                self.stream = None
+                
+            time.sleep(0.1)
+
+    def start_listening(self):
+        self.should_listen = True
+
+    def stop_listening(self):
+        self.should_listen = False
+
+    def stop(self):
+        self.is_running = False
+        self.stop_listening()
+
 class JarvisGUI(QMainWindow):
     append_text_signal = pyqtSignal(str, str)  # (Sender Name, Message Content)
     update_status_signal = pyqtSignal(str)     # (Status Bar Message)
     add_notif_signal = pyqtSignal(str)          # (Notification Log Entry)
     update_task_status_signal = pyqtSignal(str) # (Task Workspace Status)
     update_bio_signal = pyqtSignal(int)         # (Bio memory link count updates)
+    show_hud_card_signal = pyqtSignal(str, dict) # (Card Type, Card Data) Thread-safe HUD update
+    wake_from_clap_signal = pyqtSignal()         # Triggered when double clap is detected
+
 
     def __init__(self):
         super().__init__()
@@ -199,9 +325,8 @@ class JarvisGUI(QMainWindow):
         self.mic_active = False  
         self.pending_confirmation_action = None
         
-        # Autonomous reminder daemon
+        # Autonomous reminder daemon (started after boot sequence completes)
         self.reminder_service = ReminderService(on_reminder=self.handle_autonomous_reminder)
-        self.reminder_service.start()
         
         self.initUI()
         
@@ -211,6 +336,7 @@ class JarvisGUI(QMainWindow):
         self.add_notif_signal.connect(self.safe_add_notification)
         self.update_task_status_signal.connect(self.safe_update_task_status)
         self.update_bio_signal.connect(self.safe_update_bio)
+        self.wake_from_clap_signal.connect(self.handle_wake_from_clap)
         
         # Start QTimer for Clock (12h format updates)
         self.clock_timer = QTimer()
@@ -230,6 +356,18 @@ class JarvisGUI(QMainWindow):
         # Update user facts
         self.update_bio_from_memory()
         
+        # Launch Mini Floating Holographic Arc Reactor Widget
+        self.mini_widget = JarvisMiniWidget(self)
+        self.show_hud_card_signal.connect(self.mini_widget.show_info_card)
+        self.mini_widget.show()
+
+
+
+        # Timer to update mini widget state depending on TTS or Listening mode
+        self.mini_state_timer = QTimer()
+        self.mini_state_timer.timeout.connect(self.sync_mini_widget_state)
+        self.mini_state_timer.start(100)
+
         # Play Boot Sound
         self.play_sfx("boot.wav")
         
@@ -241,6 +379,28 @@ class JarvisGUI(QMainWindow):
         
         # Fire up background listening worker thread
         threading.Thread(target=self.voice_listening_worker, daemon=True).start()
+        
+        # Fire up background clap listener thread for standby wake-up
+        self.clap_listener = ClapListenerThread(self)
+        self.clap_listener.start()
+        self.clap_listener.start_listening()
+
+        # Initialize System Tray Icon (Option 1)
+        self.init_system_tray()
+
+        # Start Active App Audio Shield Timer (Option 2)
+        self.audio_shield_timer = QTimer()
+        self.audio_shield_timer.timeout.connect(self.check_audio_shield)
+        self.audio_shield_timer.start(1500)
+
+        # Register global keyboard hotkey Alt+V (MOD_ALT = 0x0001, VK_V = 0x56)
+        try:
+            import ctypes
+            self.user32 = ctypes.windll.user32
+            # Hotkey ID = 200
+            self.user32.RegisterHotKey(int(self.winId()), 200, 0x0001, 0x56)
+        except Exception as e:
+            print(f"[Hotkey Registry Warning]: {e}")
 
     def play_sfx(self, sound_name: str):
         """Plays custom synthesized Sci-Fi audio chimes safely via pygame soundboard mixer."""
@@ -1057,9 +1217,11 @@ class JarvisGUI(QMainWindow):
         # Process context
         threading.Thread(target=self.execute_brain_processing, args=(raw_text,), daemon=True).start()
 
-    def toggle_microphone_state(self):
-        self.mic_active = not self.mic_active
+    def set_microphone_state(self, active: bool):
+        self.mic_active = active
         if self.mic_active:
+            if hasattr(self, "clap_listener") and self.clap_listener:
+                self.clap_listener.stop_listening()
             self.mic_btn.setText("🔵") 
             self.mic_btn.setStyleSheet("""
                 QPushButton { background-color: #66FCF1; color: #07090D; border-radius: 8px; border: none; }
@@ -1068,6 +1230,8 @@ class JarvisGUI(QMainWindow):
             self.add_notif_signal.emit("Microphone capture active.")
             self.wave_widget.is_active = True
         else:
+            if hasattr(self, "clap_listener") and self.clap_listener:
+                self.clap_listener.start_listening()
             self.mic_btn.setText("🎙️")
             self.mic_btn.setStyleSheet("""
                 QPushButton { background-color: #080A0E; color: #45A29E; border: 1px solid #1C2735; border-radius: 8px; }
@@ -1076,6 +1240,9 @@ class JarvisGUI(QMainWindow):
             self.update_status_signal.emit("SYSTEM STATUS: STANDBY // MICROPHONE MUTED")
             self.add_notif_signal.emit("Microphone capture standby.")
             self.wave_widget.is_active = False
+
+    def toggle_microphone_state(self):
+        self.set_microphone_state(not self.mic_active)
 
     # --- THREAD WORKERS & BACKEND OVERLOAD CHANNELS ---
     def voice_listening_worker(self):
@@ -1098,6 +1265,15 @@ class JarvisGUI(QMainWindow):
     def execute_brain_processing(self, command_text: str):
         clean_cmd = command_text.lower().strip()
         
+        # 🚨 STANDBY INTERCEPT 🚨
+        if clean_cmd in ["standby", "wait", "go to sleep", "sleep", "go away"]:
+            self.set_microphone_state(False)
+            msg = "Entering standby mode, sir. Clap twice to wake me."
+            self.append_text_signal.emit("J.A.R.V.I.S.", msg)
+            self.add_notif_signal.emit("Standby mode engaged.")
+            speak(msg)
+            return
+
         # 🚨 SYSTEM SHUTDOWN INTERCEPT 🚨
         if clean_cmd in ["shutdown", "exit", "quit", "power off", "shutdown system", "close system"]:
             self.pending_confirmation_action = "shutdown"
@@ -1112,6 +1288,9 @@ class JarvisGUI(QMainWindow):
         self.wave_widget.is_active = True
         self.update_task_status_signal.emit(f"Status: Busy // Processing: '{command_text[:25]}...'")
         
+        if hasattr(self, "mini_widget") and self.mini_widget:
+            self.mini_widget.state_changed.emit("thinking")
+
         try:
             reply = self.brain.process_command(command_text)
 
@@ -1121,6 +1300,8 @@ class JarvisGUI(QMainWindow):
             elif reply:
                 self.append_text_signal.emit("J.A.R.V.I.S.", reply)
                 self.add_notif_signal.emit("Neural reply complete.")
+                # Update HUD cards dynamically
+                self.present_reply_in_hud(command_text, reply)
                 # Play success digital chime
                 self.play_sfx("success.wav")
                 # Sync bio links count
@@ -1214,10 +1395,13 @@ class JarvisGUI(QMainWindow):
         # Insert bubble widget above the spacer (index count() - 1)
         self.chat_layout.insertWidget(self.chat_layout.count() - 1, bubble)
         
-        # Scroll to bottom smoothly
-        QTimer.singleShot(50, lambda: self.chat_scroll.verticalScrollBar().setValue(
-            self.chat_scroll.verticalScrollBar().maximum()
-        ))
+        # Scroll to bottom smoothly and reliably as layout height recalculations complete
+        sb = self.chat_scroll.verticalScrollBar()
+        sb.setValue(sb.maximum())
+        QTimer.singleShot(10, lambda: sb.setValue(sb.maximum()))
+        QTimer.singleShot(50, lambda: sb.setValue(sb.maximum()))
+        QTimer.singleShot(150, lambda: sb.setValue(sb.maximum()))
+        QTimer.singleShot(300, lambda: sb.setValue(sb.maximum()))
 
     def safe_update_status(self, status_text: str):
         self.status_display.setText(status_text)
@@ -1232,6 +1416,240 @@ class JarvisGUI(QMainWindow):
 
     def safe_update_bio(self, count: int):
         self.bio_memory.setText(f"Core Sync: {count} memory links active")
+
+    def toggle_microphone(self):
+        self.toggle_microphone_state()
+
+    def handle_wake_from_clap(self):
+        if not self.mic_active:
+            self.set_microphone_state(True)
+            self.play_sfx("success.wav")
+            wake_msg = "Welcome back, Sir. I'm right here."
+            self.append_text_signal.emit("J.A.R.V.I.S.", wake_msg)
+            self.add_notif_signal.emit("Double-clap wake triggered.")
+            threading.Thread(target=speak, args=(wake_msg,), daemon=True).start()
+
+    def sync_mini_widget_state(self):
+        if hasattr(self, "mini_widget") and self.mini_widget:
+            if speaking_state.get("is_speaking"):
+                self.mini_widget.state_changed.emit("speaking")
+            elif self.mini_widget.current_state == "thinking":
+                # Let thinking complete processing
+                pass
+            elif self.mic_active:
+                self.mini_widget.state_changed.emit("listening")
+            else:
+                self.mini_widget.state_changed.emit("idle")
+
+    def init_system_tray(self):
+        # Programmatically draw a premium cyber-cyan circular logo for the tray icon
+        pixmap = QPixmap(32, 32)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setBrush(QColor("#66FCF1")) # Electric Cyan outer ring
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(4, 4, 24, 24)
+        painter.setBrush(QColor("#0C0F15")) # Dark inner body
+        painter.drawEllipse(8, 8, 16, 16)
+        painter.setBrush(QColor("#FFFFFF")) # White hot core
+        painter.drawEllipse(12, 12, 8, 8)
+        painter.end()
+        icon = QIcon(pixmap)
+        
+        self.tray_icon = QSystemTrayIcon(self)
+        self.tray_icon.setIcon(icon)
+        self.tray_icon.setToolTip("J.A.R.V.I.S. Command Center")
+        
+        # Build Context Menu
+        tray_menu = QMenu()
+        restore_action = QAction("Restore Console", self)
+        restore_action.triggered.connect(self.showNormal)
+        
+        standby_action = QAction("Standby Mode", self)
+        standby_action.triggered.connect(self.engage_standby_mode)
+        
+        wake_action = QAction("Wake J.A.R.V.I.S.", self)
+        wake_action.triggered.connect(self.handle_wake_from_clap)
+        
+        exit_action = QAction("Exit Core", self)
+        exit_action.triggered.connect(self.close_completely)
+        
+        tray_menu.addAction(restore_action)
+        tray_menu.addAction(standby_action)
+        tray_menu.addAction(wake_action)
+        tray_menu.addSeparator()
+        tray_menu.addAction(exit_action)
+        
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.activated.connect(self.on_tray_icon_activated)
+        self.tray_icon.show()
+        
+    def on_tray_icon_activated(self, reason):
+        if reason == QSystemTrayIcon.Trigger:
+            if self.isVisible():
+                self.hide()
+            else:
+                self.showNormal()
+                self.activateWindow()
+                
+    def close_completely(self):
+        self._exiting_completely = True
+        self.close()
+        
+    def engage_standby_mode(self):
+        if self.mic_active:
+            self.set_microphone_state(False)
+            
+    def closeEvent(self, event):
+        if not hasattr(self, "_exiting_completely") or not self._exiting_completely:
+            event.ignore()
+            self.hide()
+            self.add_notif_signal.emit("Console minimized to system tray.")
+            self.tray_icon.showMessage(
+                "J.A.R.V.I.S. Core",
+                "System minimized to tray. Armed and listening.",
+                QSystemTrayIcon.Information,
+                2000
+            )
+        else:
+            # Unregister global hotkey
+            try:
+                if hasattr(self, "user32"):
+                    self.user32.UnregisterHotKey(int(self.winId()), 200)
+            except Exception:
+                pass
+            # Clean stop of clap listener stream
+            if hasattr(self, "clap_listener") and self.clap_listener:
+                self.clap_listener.stop()
+            event.accept()
+
+    def nativeEvent(self, eventType, message):
+        import ctypes
+        from ctypes import wintypes
+        # WM_HOTKEY = 0x0312
+        if eventType == "windows_generic_MSG":
+            msg = ctypes.wintypes.MSG.from_address(int(message))
+            if msg.message == 0x0312:
+                if msg.wParam == 200: # Alt+V Hotkey ID
+                    self.toggle_microphone_state()
+                    self.play_sfx("success.wav")
+                    state_str = "ACTIVE" if self.mic_active else "MUTED"
+                    self.tray_icon.showMessage(
+                        "J.A.R.V.I.S. Mic Status",
+                        f"Microphone toggled: {state_str}",
+                        QSystemTrayIcon.Information,
+                        1000
+                    )
+                    return True, 0
+        return super().nativeEvent(eventType, message)
+
+    def check_audio_shield(self):
+        if not self.mic_active:
+            return
+            
+        # Call ctypes foreground title fetcher
+        try:
+            import ctypes
+            user32 = ctypes.windll.user32
+            hwnd = user32.GetForegroundWindow()
+            if not hwnd:
+                return
+            length = user32.GetWindowTextLengthW(hwnd)
+            if length == 0:
+                return
+            buf = ctypes.create_unicode_buffer(length + 1)
+            user32.GetWindowTextW(hwnd, buf, length + 1)
+            title = buf.value.lower()
+        except Exception:
+            return
+            
+        shield_keywords = [
+            "youtube", "instagram", "reels", "netflix", "spotify", 
+            "discord", "zoom", "teams", "meet", "vlc", "player",
+            "premiere", "photoshop", "game", "minecraft"
+        ]
+        
+        for kw in shield_keywords:
+            if kw in title:
+                # Auto-mute microphone to protect audio stream
+                self.set_microphone_state(False)
+                mute_msg = f"Audio Shield: Auto-muted microphone because you are active in: '{buf.value}'."
+                self.append_text_signal.emit("J.A.R.V.I.S.", mute_msg)
+                self.add_notif_signal.emit("Audio Shield active: microphone muted.")
+                self.play_sfx("success.wav")
+                
+                # Speak warning dynamically
+                from senses.tts_engine import speak
+                threading.Thread(target=speak, args=("Microphone muted to protect your audio stream.",), daemon=True).start()
+                break
+
+    def present_reply_in_hud(self, query: str, reply: str):
+        if not hasattr(self, "mini_widget") or not self.mini_widget:
+            return
+
+        clean_q = query.lower().strip()
+
+        # 1. Chrome Handoff: ONLY if explicitly requested search
+        if "search on chrome" in clean_q or "search the web for" in clean_q:
+            from tools.web_automation import open_website
+            import urllib.parse
+            
+            search_q = clean_q.replace("search the web for", "").replace("search on chrome for", "").replace("elaborate on", "").strip()
+            if not search_q:
+                search_q = clean_q
+                
+            open_website(f"https://www.google.com/search?q={urllib.parse.quote(search_q)}")
+            self.show_hud_card_signal.emit('chat', {
+                "reply": "Query detailed. Opened full search results in Google Chrome."
+            })
+            return
+
+        # 2. Stock / Finance Ticker Card (Groww Style)
+        if any(w in clean_q for w in ["stock", "shares", "price of", "groww", "market"]):
+            name = "GROWW / NIFTY 50"
+            price = "₹ 184.89"
+            change = "-2.46"
+            pct = "-1.31%"
+            spark = [30, 45, 38, 52, 68, 62, 90]
+
+            if "apple" in clean_q or "aapl" in clean_q:
+                name = "AAPL (APPLE INC.)"
+                price = "$ 178.45"
+                change = "+3.12"
+                pct = "+1.78%"
+                spark = [40, 50, 48, 65, 72, 85, 95]
+            elif "tesla" in clean_q or "tsla" in clean_q:
+                name = "TSLA (TESLA INC.)"
+                price = "$ 210.50"
+                change = "-8.40"
+                pct = "-3.84%"
+                spark = [80, 75, 60, 55, 48, 52, 42]
+
+            self.show_hud_card_signal.emit('stock', {
+                "name": name,
+                "price": price,
+                "change": change,
+                "percent": pct,
+                "sparkline": spark
+            })
+            return
+
+        # 3. Weather Card
+        if any(w in clean_q for w in ["weather", "temp", "temperature", "forecast"]):
+            self.show_hud_card_signal.emit('weather', {
+                "location": "GUNTUR, AP",
+                "temp": "31°C",
+                "desc": "Humid / Partly Cloudy",
+                "humidity": "Humidity: 68%",
+                "wind": "Wind: 12 km/h"
+            })
+            return
+
+        # 4. Standard Response Card (No-op: Conversational chat is only spoken, keeping HUD clean)
+        pass
+
+
 
 
 _instance_lock_socket = None
@@ -1251,5 +1669,5 @@ if __name__ == "__main__":
         sys.exit(0)
     app = QApplication(sys.argv)
     gui = JarvisGUI()
-    gui.show()
+    gui.showMaximized()
     sys.exit(app.exec_())

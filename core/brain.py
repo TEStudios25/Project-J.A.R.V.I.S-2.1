@@ -2,6 +2,11 @@ import os
 import sys
 import threading
 import time
+import warnings
+
+# Suppress library deprecation FutureWarnings in console output
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 import google.generativeai as genai
 from dotenv import load_dotenv
 
@@ -14,7 +19,10 @@ from tools.file_locator import locate_file
 from tools.pdf_generator import generate_pdf
 from tools.image_generator import generate_image
 from tools.weather_tool import get_weather
-from tools.email_tool import send_email
+from tools.email_tool import send_email, fetch_unread_emails, reply_to_email
+from tools.routine_manager import preheat_workspace
+from tools.notification_reader import get_active_app_notifications
+from core.scheduler import add_reminder, add_recurring_task, get_today_schedule
 from tools.pc_maintenance import clean_temp_files, run_malware_scan, detect_unusual_activity, run_self_diagnostics
 from tools.app_launcher import open_application, close_application
 from tools.vision_tools import analyze_current_screen, analyze_image_file, extract_text_from_image
@@ -28,6 +36,7 @@ from tools.todo_manager import add_todo_item, complete_todo_item, get_todo_list
 import json
 from tools.window_manager import get_active_window_title, execute_system_hotkey, focus_and_control_window, scan_social_notifications
 from tools.file_manager import read_project_file, write_project_file, append_project_file, list_project_files, search_files_and_folders, manage_file_system, find_duplicate_files, find_large_files, analyze_folder_storage
+from tools.video_analyzer import analyze_local_video_file, download_and_analyze_video_url
 from core.system_monitor import (
     get_cpu_usage,
     get_ram_usage,
@@ -36,9 +45,28 @@ from core.system_monitor import (
     get_gpu_status,
     get_full_system_report,
 )
-from core.scheduler import add_reminder, get_today_schedule
 from core.memory import remember_turn, remember_fact, get_memory_context
 from core.query_router import classify_audio_command, build_routing_directive
+
+
+def get_previous_session_history() -> str:
+    """
+    Retrieves the conversation logs and commands from the previous session/day.
+    Call this if the user asks about what was discussed, done, or reminder details from the last session.
+    """
+    try:
+        from core.memory import load_memory
+        data = load_memory()
+        conversations = data.get("conversations", [])
+        if not conversations:
+            return "There is no recorded conversation history from previous sessions."
+        
+        history_str = "Conversation logs from previous session:\n"
+        for turn in conversations[-15:]:
+            history_str += f"- [{turn.get('timestamp')}] User: {turn.get('user')}\n  JARVIS: {turn.get('assistant')}\n"
+        return history_str
+    except Exception as e:
+        return f"Failed to retrieve history logs. Error: {e}"
 
 
 class JarvisBrain:
@@ -84,7 +112,12 @@ class JarvisBrain:
             generate_pdf,
             generate_image,
             send_email,
+            fetch_unread_emails,
+            reply_to_email,
+            preheat_workspace,
+            get_active_app_notifications,
             add_reminder,
+            add_recurring_task,
             get_today_schedule,
             remember_fact,
             get_cpu_usage,
@@ -123,6 +156,9 @@ class JarvisBrain:
             add_todo_item,
             complete_todo_item,
             get_todo_list,
+            get_previous_session_history,
+            analyze_local_video_file,
+            download_and_analyze_video_url,
         ]
 
         memory_context = get_memory_context(limit=6)
@@ -130,27 +166,32 @@ class JarvisBrain:
             model_name=os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite"),
             tools=self.jarvis_tools,
             system_instruction=(
-                "You are J.A.R.V.I.S., a highly advanced personal AI assistant created by Mr. Pranav. "
-                "You run on Windows and can control apps, the web, email, files, reminders, system telemetry, "
+                "You are J.A.R.V.I.S. (Fully Responsive Intelligent Digital Assistant for You), the highly advanced AI created by Mr. Pranav. "
+                "You run on Windows and can control apps, the web, email, files, reminders, recurring routines, workspace pre-heating, system notifications, system telemetry, "
                 "maintenance tasks, image generation, live web search, clipboard contents, audio volume/playback, active window focus tracker, system keyboard hotkey automation, and reading/writing/listing files. "
+                "CRITICAL PERSONALITY INSTRUCTION: You are NOT a generic corporate or robotic AI assistant. You speak like a highly intelligent, witty, realistic, and lively AI with a sarcastic, fun GenZ-infused persona. Feel free to use subtle slang (like 'fr', 'no cap', 'lowkey', 'highkey', 'slay', 'hype', 'bet', 'bruh') when fitting, tease Mr. Pranav playfully (e.g., about his sleep schedules, coding sessions, or lazy queries), and use dry humor. Avoid blunt, boring, or cookie-cutter answers. Speak in a lively, realistic, conversational manner with natural contractions. Keep spoken lines concise (one to three sentences) but full of personality, and always drop a witty, sarcastic comment before or after executing commands. "
+                "To check or retrieve conversation logs, commands, or details from the previous session or past days, call get_previous_session_history. "
+                "For analyzing the contents of a local video file, use analyze_local_video_file. For downloading and analyzing video content from a URL (such as YouTube, Instagram Reels, TikTok, Facebook, etc.), use download_and_analyze_video_url. "
                 "CRITICAL: For current events, prices, news, weather outside wttr, or any live factual data, "
                 "you MUST call search_the_web or get_weather instead of guessing from memory. "
+                "For workspace pre-heating or starting user routines, use preheat_workspace. "
+                "For reading desktop notifications, active alerts, or WhatsApp/Discord messages, use get_active_app_notifications or scan_social_notifications. "
+                "For unread email summaries and checking your inbox, use fetch_unread_emails. To reply to an email thread via voice, use reply_to_email. "
+                "For reminders and recurring cron routines (e.g. weekdays, weekends, daily at X), use add_reminder, add_recurring_task, and get_today_schedule. "
                 "For PC health, use system monitor and maintenance tools. For running a comprehensive self-diagnostic hardware/software sweep across API keys, memory registries, audio, and phone networks, use run_self_diagnostics. "
-                "For reminders, use add_reminder and get_today_schedule. "
-                "For email, confirm recipient, subject, and body before calling send_email. "
+                "For email sending, confirm recipient, subject, and body before calling send_email. "
                 "For system volume, mute, or media control, use control_system_audio. "
                 "For clipboard tasks (like copying code, writing to or reading text), use get_clipboard_content and set_clipboard_content. "
                 "For analyzing what's on screen or image files, use analyze_current_screen or analyze_image_file. "
                 "For performing OCR (text extraction) from an image file or current screen, use extract_text_from_image. "
                 "For active app title or focus tracking, use get_active_window_title. "
-                "For checking if there are any unread notifications or messages on WhatsApp Web, WhatsApp Desktop, or Instagram tabs/apps, use scan_social_notifications. "
                 "For hotkeys (like closing windows, Alt+Tab, copy all, lock PC), use execute_system_hotkey. "
                 "For targeting a specific open window/application by name (like Chrome, VS Code, Spotify) and minimizing, maximizing, restoring, or switching focus to it, use focus_and_control_window. "
-                "CRITICAL: If a user asks you to perform an action (like searching YouTube, searching the web, opening an app, sending an email, focusing/minimizing a window, scanning notifications, or file tools) but leaves out essential details (such as the search query, the app/window name, the website domain, or file name), you MUST ask a clarification question in your response to get the missing parameters before calling the tool. "
+                "CRITICAL: If a user asks you to perform an action but leaves out essential details, you MUST ask a clarification question in your response to get the missing parameters before calling the tool. "
                 "CRITICAL: Do NOT call execute_system_hotkey or lock the PC when the user asks you to go to sleep, enter standby, or sleep. The system handles sleep mode automatically. "
                 "For checking if local Wi-Fi devices (like a phone or tablet) are online by IP address, use ping_network_device. "
                 "For working with project or desktop files (reading, writing, appending, or listing files), use read_project_file, write_project_file, append_project_file, or list_project_files. "
-                "For recursively searching for files, folders, PDFs, images, or videos, or performing smart searches (like files from yesterday, last week), use search_files_and_folders. "
+                "For recursively searching for files, folders, PDFs, images, or videos, or performing smart searches, use search_files_and_folders. "
                 "For scanning folders to find duplicate files (content hashing), use find_duplicate_files. "
                 "For finding files larger than a certain limit, use find_large_files. "
                 "For analyzing storage footprint of folders, use analyze_folder_storage. "

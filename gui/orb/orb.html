@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>J.A.R.V.I.S. 3D Holographic Core</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #020610;
+      color: #00f0ff;
+    }
+    #orb-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    /* Overlay FX */
+    .vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      background: radial-gradient(circle at center, transparent 45%, rgba(2, 6, 16, 0.65) 80%, rgba(2, 6, 16, 0.95) 100%);
+    }
+    .scanlines {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3;
+      background: repeating-linear-gradient(0deg, rgba(0, 240, 255, 0.012) 0px, rgba(0, 240, 255, 0.012) 1px, transparent 1px, transparent 3px);
+    }
+
+    /* TOP RIGHT: Micro Minimalist Iron Man Digital Clock (12-Hour Format) */
+    .hud-clock {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      z-index: 10;
+      text-align: right;
+      background: rgba(2, 10, 24, 0.4);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      backdrop-filter: blur(8px);
+      border-radius: 5px;
+      padding: 4px 10px;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
+    }
+    .hud-clock .time {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: #00f0ff;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
+    }
+    .hud-clock .date {
+      font-size: 8px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: rgba(0, 240, 255, 0.65);
+      margin-top: 1px;
+      text-transform: uppercase;
+    }
+
+    /* TOP LEFT: Holographic Core Title */
+    .hud-brand {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      z-index: 10;
+      font-family: 'Segoe UI', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #00f0ff;
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .hud-brand .arc-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #00f0ff;
+      box-shadow: 0 0 8px #00f0ff;
+      animation: pulseArc 2s infinite ease-in-out;
+    }
+    @keyframes pulseArc {
+      0%, 100% { transform: scale(0.9); opacity: 0.7; }
+      50% { transform: scale(1.3); opacity: 1; }
+    }
+
+    /* BOTTOM RIGHT: Micro Subtle Controls */
+    .hud-panel {
+      position: absolute;
+      bottom: 12px;
+      right: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+      opacity: 0.7;
+      transition: opacity 0.3s ease;
+    }
+    .hud-panel:hover {
+      opacity: 1;
+    }
+    .camera-container {
+      width: 130px;
+      height: 88px;
+      position: relative;
+      border-radius: 5px;
+      overflow: hidden;
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      background: rgba(0, 10, 25, 0.85);
+      box-shadow: 0 0 8px rgba(0, 240, 255, 0.15);
+      display: none;
+    }
+    .camera-container.active {
+      display: block;
+    }
+    video#webcam {
+      display: none;
+    }
+    canvas#gesture-canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+      display: block;
+    }
+    .gesture-status {
+      position: absolute;
+      bottom: 2px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 8px;
+      font-weight: bold;
+      letter-spacing: 0.8px;
+      background: rgba(2, 6, 16, 0.75);
+      color: #00f0ff;
+      padding: 1px 0;
+    }
+
+    /* Micro Subtle HUD Buttons */
+    .hud-btn-row {
+      display: flex;
+      gap: 5px;
+    }
+    .hud-btn {
+      background: rgba(2, 14, 30, 0.45);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      color: rgba(0, 240, 255, 0.85);
+      font-size: 8px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      padding: 3px 7px;
+      border-radius: 4px;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      transition: all 0.2s ease;
+    }
+    .hud-btn:hover {
+      background: rgba(0, 240, 255, 0.2);
+      border-color: #00f0ff;
+      color: #ffffff;
+      box-shadow: 0 0 6px rgba(0, 240, 255, 0.3);
+    }
+    .hud-btn.active {
+      background: rgba(0, 240, 255, 0.25);
+      border-color: #00f0ff;
+      color: #ffffff;
+      box-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+    }
+  </style>
+
+  <!-- Three.js & Post-Processing CDN scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+
+  <!-- MediaPipe Camera & Hands CDN scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="orb-container"></div>
+  <div class="vignette"></div>
+  <div class="scanlines"></div>
+
+  <!-- TOP LEFT: BRAND -->
+  <div class="hud-brand">
+    <div class="arc-dot"></div>
+    <span>Project J.A.R.V.I.S. 2.1</span>
+  </div>
+
+  <!-- TOP RIGHT: MICRO IRON MAN CLOCK (12-HOUR FORMAT) -->
+  <div class="hud-clock">
+    <div class="time" id="clock-time">00:00:00 AM</div>
+    <div class="date" id="clock-date">LOADING...</div>
+  </div>
+
+  <!-- BOTTOM RIGHT: MICRO CONTROLS -->
+  <div class="hud-panel">
+    <div class="camera-container" id="camera-box">
+      <video id="webcam" autoplay playsinline></video>
+      <canvas id="gesture-canvas"></canvas>
+      <div class="gesture-status" id="gesture-status-text">SHOW HANDS</div>
+    </div>
+
+    <div class="hud-btn-row">
+      <button class="hud-btn" id="btn-perf" onclick="window.orbApi.togglePerformanceMode()">iGPU: ULTRA BLOOM</button>
+      <button class="hud-btn" id="btn-gesture" onclick="toggleGestures()">GESTURES OFF</button>
+      <button class="hud-btn" onclick="cycleCameraDevice()">CAM: SWITCH</button>
+      <button class="hud-btn" onclick="window.orbApi.zoomIn()">+</button>
+      <button class="hud-btn" onclick="window.orbApi.zoomOut()">−</button>
+      <button class="hud-btn" onclick="window.orbApi.resetView()">RESET</button>
+    </div>
+  </div>
+
+  <script src="orb_scene.js"></script>
+  <script src="hand_tracker.js"></script>
+  <script>
+    // Live 12-Hour Format Digital Clock Update
+    function updateClock() {
+      const now = new Date();
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // Convert 0 to 12
+      const timeStr = `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+      
+      const options = { weekday: 'short', month: 'short', day: '2-digit' };
+      const dateStr = now.toLocaleDateString('en-US', options).toUpperCase();
+      
+      document.getElementById('clock-time').textContent = timeStr;
+      document.getElementById('clock-date').textContent = dateStr;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+  </script>
+</body>
+</html>

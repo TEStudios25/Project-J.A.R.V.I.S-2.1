@@ -19,3 +19,6 @@ faster-whisper
 scipy
 piper-tts
 winsdk
+pywebview
+websockets
+mediapipe

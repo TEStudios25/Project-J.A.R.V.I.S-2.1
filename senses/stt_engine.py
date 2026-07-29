@@ -9,28 +9,71 @@ recognizer.pause_threshold = 0.8    # Responsive 0.8-second timeout before auto-
 
 is_calibrated = False # Global flag to ensure calibration runs only once on startup
 
+def get_best_microphone_index():
+    import pyaudio
+    p = pyaudio.PyAudio()
+    try:
+        device_count = p.get_device_count()
+        # Priority 1: Real USB Audio Devices
+        for i in range(device_count):
+            try:
+                dev_info = p.get_device_info_by_index(i)
+                if dev_info.get('maxInputChannels', 0) > 0:
+                    name = dev_info.get('name', '').lower()
+                    if "usb audio device" in name or "usb microphone" in name or "usb mic" in name:
+                        return i
+            except Exception:
+                pass
+        # Priority 2: Standard built-in mics (excluding DroidCam and mapper)
+        for i in range(device_count):
+            try:
+                dev_info = p.get_device_info_by_index(i)
+                if dev_info.get('maxInputChannels', 0) > 0:
+                    name = dev_info.get('name', '').lower()
+                    if "sound mapper" not in name and "droidcam" not in name:
+                        return i
+            except Exception:
+                pass
+        # Priority 3: Fall back to default
+        try:
+            return p.get_default_input_device_info().get('index')
+        except Exception:
+            return None
+    except Exception:
+        return None
+    finally:
+        try:
+            p.terminate()
+        except Exception:
+            pass
+
+chosen_mic_index = get_best_microphone_index()
+
 def listen(check_active_func=None) -> str:
     """
     Listens to the microphone with an advanced 'Barge-In' Intercept Mode.
     Normal Mode uses simple pause-based auto-submission with a 0.8-second timeout.
     """
-    global is_calibrated
-    with sr.Microphone() as source:
+    global is_calibrated, chosen_mic_index
+    with sr.Microphone(device_index=chosen_mic_index) as source:
         # Check if J.A.R.V.I.S. is currently speaking out loud
         is_speaking = False
-        if pygame.mixer.get_init() and pygame.mixer.music.get_busy():
+        import senses.tts_engine
+        if senses.tts_engine.speaking_state.get("is_speaking", False):
             is_speaking = True
             
-        # 🔥 THE FIX: Calibrate noise ONLY once on boot, never on every turn!
+        # THE FIX: Calibrate noise ONLY once on boot, never on every turn!
         # This speeds up listening start by 0.5s per turn.
         if not is_calibrated and not is_speaking:
-            print("\n[🎙️ J.A.R.V.I.S. is calibrating mic for ambient noise...]")
+            print("\n[System]: Calibrating microphone for ambient noise...")
             recognizer.adjust_for_ambient_noise(source, duration=0.8)
+            # Increase sensitivity slightly to catch whispers, clamp max to 600 to prevent fan noise locks
+            recognizer.energy_threshold = min(600, max(90, recognizer.energy_threshold * 0.80))
             is_calibrated = True
-            print("[✓] Calibration complete. Standby.")
+            print(f"[System]: Calibration complete. Energy threshold set to: {int(recognizer.energy_threshold)}")
         
         if not is_speaking:
-            print("\n[🎙️ J.A.R.V.I.S. is listening (0.8s pause standby)...]")
+            print("\n[System]: Listening...")
         
         try:
             # Dynamic Listening Logic
@@ -44,10 +87,10 @@ def listen(check_active_func=None) -> str:
                 finally:
                     recognizer.pause_threshold = old_pt
             else:
-                # NORMAL MODE: Single listen call with 0.8-second pause threshold
+                # NORMAL MODE: Stable long-timeout to keep stream active
                 recognizer.pause_threshold = 0.8
-                audio = recognizer.listen(source, timeout=10, phrase_time_limit=15)
-                print("[⚙️ Processing...]")
+                audio = recognizer.listen(source, timeout=10, phrase_time_limit=12)
+                print("[System]: Processing voice...")
             
             # Calculate RMS energy of the recorded audio
             import struct
@@ -68,9 +111,9 @@ def listen(check_active_func=None) -> str:
             
             # Set whisper mode state on TTS engine
             import senses.tts_engine
-            if (0 < rms < 380) or "whisper" in query:
+            if (0 < rms < 120) or "whisper" in query:
                 senses.tts_engine.whisper_mode = True
-                print(f"[⚙️ Whisper Mode Active (RMS: {round(rms, 1)})]")
+                print(f"[System]: Whisper Mode Active (RMS: {round(rms, 1)})")
             else:
                 senses.tts_engine.whisper_mode = False
             

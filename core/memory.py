@@ -51,7 +51,7 @@ def remember_fact(key: str, value: str) -> str:
     return f"Noted, sir. I will remember that your {key} is {value}."
 
 
-def get_memory_context(limit: int = 8) -> str:
+def get_memory_context(limit: int = 8, max_hours_gap: float = 4.0) -> str:
     data = load_memory()
     lines = []
 
@@ -61,11 +61,26 @@ def get_memory_context(limit: int = 8) -> str:
         for key, value in profile.items():
             lines.append(f"- {key}: {value}")
 
-    recent = data.get("conversations", [])[-limit:]
+    recent = data.get("conversations", [])
     if recent:
-        lines.append("Recent conversation context:")
-        for turn in recent:
-            lines.append(f"User: {turn.get('user', '')}")
-            lines.append(f"JARVIS: {turn.get('assistant', '')}")
+        last_turn = recent[-1]
+        last_ts_str = last_turn.get("timestamp", "")
+        is_fresh_session = False
+        try:
+            # Parse timestamp: e.g. "2026-07-29T15:08:44"
+            last_ts = datetime.fromisoformat(last_ts_str)
+            hours_passed = (datetime.now() - last_ts).total_seconds() / 3600.0
+            if hours_passed >= max_hours_gap:
+                is_fresh_session = True
+        except Exception:
+            pass
+
+        if is_fresh_session:
+            lines.append("Notice: This is a fresh session started after a break. Do NOT mention previous session tasks/reminders/scans unless asked.")
+        else:
+            lines.append("Recent conversation context:")
+            for turn in recent[-limit:]:
+                lines.append(f"User: {turn.get('user', '')}")
+                lines.append(f"JARVIS: {turn.get('assistant', '')}")
 
     return "\n".join(lines) if lines else "No stored memory yet."

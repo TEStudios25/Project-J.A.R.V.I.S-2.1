@@ -70,5 +70,14 @@
             "task": "friend meeting (rescheduled)",
             "status": "notified"
         }
+    ],
+    "recurring": [
+        {
+            "id": "8666b352-8856-4467-a5fa-cc486d2b916e",
+            "time": "20:00",
+            "task": "Revise math",
+            "days": "weekdays",
+            "last_notified_date": "2026-07-24"
+        }
     ]
 }

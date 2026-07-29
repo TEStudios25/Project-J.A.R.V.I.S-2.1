@@ -1,6 +1,14 @@
 import os
 import google.generativeai as genai
 from PIL import ImageGrab, Image
+from dotenv import load_dotenv
+
+def _ensure_api_configured():
+    load_dotenv()
+    api_key = os.getenv("GEMINI_API_KEY")
+    if api_key:
+        genai.configure(api_key=api_key)
+    return api_key
 
 def analyze_current_screen() -> str:
     """
@@ -8,6 +16,9 @@ def analyze_current_screen() -> str:
     on the capture, acting like Google Lens, and returns a detailed intelligence explanation.
     """
     print("\n[📸 J.A.R.V.I.S. is capturing screen telemetry...]")
+    if not _ensure_api_configured():
+        return "Error: GEMINI_API_KEY is missing from the .env file."
+
     try:
         # Capture screenshot
         screenshot = ImageGrab.grab()
@@ -21,8 +32,9 @@ def analyze_current_screen() -> str:
         # Load image
         img = Image.open(img_path)
         
-        # Call Gemini 1.5 Flash (multimodal) to analyze the image
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        # Call Gemini Flash (multimodal) to analyze the image
+        vision_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        model = genai.GenerativeModel(vision_model)
         prompt = (
             "You are J.A.R.V.I.S., acting as a Google Lens agent. Analyze this screenshot of the user's monitor. "
             "Explain exactly what is on the screen. If you see code, explain the code and check for bugs/errors. "
@@ -37,7 +49,7 @@ def analyze_current_screen() -> str:
         except Exception:
             pass
             
-        return response.text
+        return response.text if response.text else "Screen captured, but no visual details could be generated."
         
     except Exception as e:
         return f"Failed to capture and analyze screen. Error: {str(e)}"
@@ -48,19 +60,24 @@ def analyze_image_file(image_path: str) -> str:
     Uses Gemini Multimodal analysis (Google Lens-style) to explain, describe, or debug.
     """
     print(f"\n[👁️ J.A.R.V.I.S. is checking file registry: '{image_path}'...]")
+    if not _ensure_api_configured():
+        return "Error: GEMINI_API_KEY is missing from the .env file."
+
     try:
-        if not os.path.exists(image_path):
-            return f"Error: Image file not found at {image_path}."
+        resolved = _resolve_path(image_path)
+        if not os.path.exists(resolved):
+            return f"Error: Image file not found at '{image_path}'."
             
-        img = Image.open(image_path)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        img = Image.open(resolved)
+        vision_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        model = genai.GenerativeModel(vision_model)
         prompt = (
             "You are J.A.R.V.I.S., acting as a Google Lens agent. Analyze this image. "
             "Explain exactly what is in the image. Describe objects, colors, text, landscapes, code, or any visual content in detail. "
             "Keep the report highly informative and structured."
         )
         response = model.generate_content([img, prompt])
-        return response.text
+        return response.text if response.text else "Image processed, but no visual output was returned."
     except Exception as e:
         return f"Failed to analyze image file. Error: {str(e)}"
 
@@ -71,6 +88,9 @@ def extract_text_from_image(image_path: str = "") -> str:
     If image_path is provided, extracts text from that specific file.
     """
     print("\n[🔍 J.A.R.V.I.S. is executing OCR text extraction...]")
+    if not _ensure_api_configured():
+        return "Error: GEMINI_API_KEY is missing from the .env file."
+
     try:
         # If no image path, capture screen
         if not image_path:
@@ -83,10 +103,11 @@ def extract_text_from_image(image_path: str = "") -> str:
         else:
             img_path = _resolve_path(image_path)
             if not os.path.exists(img_path):
-                return f"Error: Image file not found at {img_path}."
+                return f"Error: Image file not found at '{image_path}'."
             img = Image.open(img_path)
 
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        vision_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        model = genai.GenerativeModel(vision_model)
         prompt = (
             "You are J.A.R.V.I.S., an advanced OCR engine. Extract all text, characters, codes, "
             "or words from this image. Keep the layout format clean, and do NOT add any conversational "
