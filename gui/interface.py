@@ -1712,21 +1712,10 @@ class JarvisGUI(QMainWindow):
         except Exception as e:
             print(f"[System Hotkey Warning]: Error registering global hotkeys: {e}")
 
-    def lazy_load_whisper(self):
-        try:
-            from senses.stt_engine import init_whisper_async
-            init_whisper_async()
-        except Exception as e:
-            print(f"[STT Lazy Load Warning]: {e}")
-
     def showEvent(self, event):
         super().showEvent(event)
         self._resume_orb()
         self.register_global_hotkeys()
-        
-        # Defer loading Whisper model by 2500ms to avoid DLL loader conflicts during app boot
-        from PyQt5.QtCore import QTimer
-        QTimer.singleShot(2500, self.lazy_load_whisper)
 
     def hideEvent(self, event):
         super().hideEvent(event)

@@ -14,6 +14,17 @@ if sys.platform == "win32":
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="replace")
+
+# --- CRITICAL LOAD ORDER WORKAROUND ---
+# Load and initialize Faster-Whisper FIRST to avoid Windows DLL loader lock / memory allocation conflicts
+# with PyQt5 / pywebview (Chromium WebView2) libraries.
+try:
+    print("[System]: Pre-initializing Faster-Whisper model in clean memory space...")
+    from senses.stt_engine import get_whisper_model
+    get_whisper_model()
+except Exception as e:
+    print(f"[Warning]: Failed to pre-initialize Faster-Whisper: {e}")
+
 from PyQt5.QtWidgets import QApplication
 
 # --- PATH ENFORCEMENT ---
