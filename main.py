@@ -5,6 +5,9 @@ import threading
 
 # Prevent OpenMP runtime conflict crashes (0xC0000005) when loading numpy/ctranslate2 DLLs
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ["CT2_FORCE_CPU_ISA"] = "GENERIC"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
 
 # Windows terminals often default to cp1252; allow emoji/log output during boot.
 if sys.platform == "win32":

@@ -5,6 +5,9 @@ import sys
 
 # Prevent OpenMP runtime duplicate initialization crash
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+os.environ["CT2_FORCE_CPU_ISA"] = "GENERIC"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
 
 _whisper_model = None
 
