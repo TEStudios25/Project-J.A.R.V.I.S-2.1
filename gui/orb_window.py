@@ -47,9 +47,13 @@ class QuietHTTPRequestHandler(SimpleHTTPRequestHandler):
         else:
             super().do_GET()
 
+class QuietThreadingHTTPServer(ThreadingHTTPServer):
+    def handle_error(self, request, client_address):
+        pass # Silence harmless socket abort/reset traceback noise
+
 def start_local_http_server(port=54321):
     try:
-        server = ThreadingHTTPServer(('127.0.0.1', port), QuietHTTPRequestHandler)
+        server = QuietThreadingHTTPServer(('127.0.0.1', port), QuietHTTPRequestHandler)
         t = threading.Thread(target=server.serve_forever, daemon=True)
         t.start()
         print(f"[🌐 Local HTTP Server active on http://127.0.0.1:{port}]")
