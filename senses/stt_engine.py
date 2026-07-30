@@ -3,6 +3,9 @@ import pygame
 import os
 import sys
 
+# Prevent OpenMP runtime duplicate initialization crash
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 _whisper_model = None
 
 def get_whisper_model():

@@ -3,6 +3,9 @@ import sys
 import time
 import threading
 
+# Prevent OpenMP runtime conflict crashes (0xC0000005) when loading numpy/ctranslate2 DLLs
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 # Windows terminals often default to cp1252; allow emoji/log output during boot.
 if sys.platform == "win32":
     for stream in (sys.stdout, sys.stderr):

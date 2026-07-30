@@ -93,5 +93,19 @@
             "task": "Double Booking Test",
             "status": "pending"
         }
+    ],
+    "2026-07-31": [
+        {
+            "id": "41c7e516-61de-4494-a681-814a9d7a653c",
+            "time": "03:00 PM",
+            "task": "Autopilot Code Review",
+            "status": "pending"
+        },
+        {
+            "id": "0da86684-1bca-49a2-9c14-d97dd143f834",
+            "time": "03:00 PM",
+            "task": "Double Booking Test",
+            "status": "pending"
+        }
     ]
 }
