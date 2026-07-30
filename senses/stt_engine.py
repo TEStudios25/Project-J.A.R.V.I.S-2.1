@@ -27,8 +27,7 @@ def init_whisper_async():
     import threading
     threading.Thread(target=get_whisper_model, daemon=True).start()
 
-# Initialize Whisper model in parallel on boot to eliminate lag
-init_whisper_async()
+# Background initialization will be deferred to post-GUI startup to avoid DLL loader conflicts
 
 def recognize_audio_local(audio) -> str:
     model = get_whisper_model()
