@@ -225,9 +225,9 @@ class JarvisBrain:
         fast_model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
         self.fast_model = self.model  # Reuse configured model as fast model
         
-        print("[🧠 Brain]: Initializing Heavy Chat Model (gemini-1.5-flash)...")
+        print("[🧠 Brain]: Initializing Heavy Chat Model (gemini-3.1-flash-lite)...")
         self.heavy_model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
+            model_name=os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite"),
             tools=self.jarvis_tools,
             system_instruction=self.model._system_instruction
         )

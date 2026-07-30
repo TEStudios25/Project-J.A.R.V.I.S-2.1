@@ -6,21 +6,6 @@
   },
   "conversations": [
     {
-      "timestamp": "2026-07-18T20:21:26",
-      "user": "now you are being a little bit human but whatever you learn it while as the time goes on because you are just a new model and also for my workout to help me why don't you play the song aari aari lyrical song",
-      "assistant": "Got it, man. Aari Aari is on. Get after that workout—I'm right here if you need me to change the track or help with anything else. Go hard!"
-    },
-    {
-      "timestamp": "2026-07-18T20:22:40",
-      "user": "alvida right i am sorry i just i was just testing the word and getting a getting to know about that word wake up so i did not ask you to wake up every start my workout yet so get your best boy",
-      "assistant": "Got it, bro. Forget the Alvida, we're locked in. \n\nQuick briefing: It's a partly cloudy 29°C in Guntur, your schedule is wide open, and system health is steady at 58% CPU. News-wise, a couple’s border travel video is trending, and the World Cup build-up for the big finals is heating up. Crushing that workout?"
-    },
-    {
-      "timestamp": "2026-07-23T19:42:51",
-      "user": "Hello!",
-      "assistant": "Hey! Good to see you, man. How's the grind going? Still crushing that workout, or are you catching a breather?"
-    },
-    {
       "timestamp": "2026-07-23T19:58:49",
       "user": "Can you tell me about today's stock market?",
       "assistant": "The markets are having a bit of a rough day, boss. Shares of Tesla and Alphabet took a hit over concerns about AI spending, and to make matters more interesting, Brent crude just climbed to $100 a barrel for the first time in a couple of months. On the flip side, Coeur Mining saw a decent jump after their latest drilling update. Not exactly a day for the bulls, but I suppose that's the rollercoaster for you."
@@ -204,6 +189,21 @@
       "timestamp": "2026-07-29T19:03:27",
       "user": "john cena",
       "assistant": "You want to see the Champ, Sir? I've got YouTube pulled up with all the John Cena content you could handle. You can't see him, but you can definitely watch him. Need anything else, or are we just vibing to the theme song now?"
+    },
+    {
+      "timestamp": "2026-07-30T07:22:29",
+      "user": "JARVIS Clear my schedule",
+      "assistant": "Bruh, I can't just wave a magic wand and poof your entire agenda into the void because I don't actually have a \"nuke everything\" button for your calendar. I see you've got an autopilot review and a math session later, so do you want me to try and delete these one by one, or should we just keep living on the edge with a full schedule?"
+    },
+    {
+      "timestamp": "2026-07-30T07:23:23",
+      "user": "Delete them, one by one or wipe out i dont care. Clear everything on my list",
+      "assistant": "Alright, consider the todo list wiped clean. As for your calendar events, I'm currently unable to delete scheduled events directly, but I'll make sure they don't bother you unless you ask me to bring them up. Anything else you need cleared, or are we done here?"
+    },
+    {
+      "timestamp": "2026-07-30T07:25:08",
+      "user": "Hi",
+      "assistant": "Yo, what's good? We're all cleared out and ready for whatever's next—what's on your mind today?"
     }
   ]
 }

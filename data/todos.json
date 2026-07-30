@@ -9,6 +9,6 @@
   },
   {
     "task": "Run storage cleaner routine",
-    "completed": false
+    "completed": true
   }
 ]

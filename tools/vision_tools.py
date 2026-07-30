@@ -33,7 +33,7 @@ def analyze_current_screen() -> str:
         img = Image.open(img_path)
         
         # Call Gemini Flash (multimodal) to analyze the image
-        vision_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        vision_model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
         model = genai.GenerativeModel(vision_model)
         prompt = (
             "You are J.A.R.V.I.S., acting as a Google Lens agent. Analyze this screenshot of the user's monitor. "
@@ -69,7 +69,7 @@ def analyze_image_file(image_path: str) -> str:
             return f"Error: Image file not found at '{image_path}'."
             
         img = Image.open(resolved)
-        vision_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        vision_model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
         model = genai.GenerativeModel(vision_model)
         prompt = (
             "You are J.A.R.V.I.S., acting as a Google Lens agent. Analyze this image. "
@@ -106,7 +106,7 @@ def extract_text_from_image(image_path: str = "") -> str:
                 return f"Error: Image file not found at '{image_path}'."
             img = Image.open(img_path)
 
-        vision_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        vision_model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
         model = genai.GenerativeModel(vision_model)
         prompt = (
             "You are J.A.R.V.I.S., an advanced OCR engine. Extract all text, characters, codes, "

@@ -23,10 +23,7 @@ def analyze_local_video_file(file_path: str, prompt: str = "Describe this video 
             raise ValueError(f"Gemini video processing error: {video_file.error.message}")
             
         print("[📹 Video Analyzer]: Gemini processing completed. Analyzing video frames...")
-        model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-        # Ensure we use 1.5-flash or higher which natively supports multimodal video
-        if "lite" in model_name:
-            model_name = "gemini-1.5-flash"
+        model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
         
         model = genai.GenerativeModel(model_name=model_name)
         response = model.generate_content([video_file, prompt])
