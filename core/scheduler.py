@@ -75,7 +75,6 @@ def add_recurring_task(task: str, time_str: str, days_filter: str = "daily") -> 
 
 def get_today_schedule() -> str:
     """Returns all pending tasks (one-time and active recurring) scheduled for today."""
-    print("\n[📆 J.A.R.V.I.S. is checking today's calendar...]")
     schedule_data = _load_schedule()
     today = datetime.now().strftime("%Y-%m-%d")
     
