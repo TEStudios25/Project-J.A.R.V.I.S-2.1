@@ -74,11 +74,13 @@ def add_recurring_task(task: str, time_str: str, days_filter: str = "daily") -> 
 
 
 def get_today_schedule() -> str:
-    """Returns all tasks (one-time and recurring) scheduled for today."""
+    """Returns all pending tasks (one-time and active recurring) scheduled for today."""
     print("\n[📆 J.A.R.V.I.S. is checking today's calendar...]")
     schedule_data = _load_schedule()
     today = datetime.now().strftime("%Y-%m-%d")
-    today_tasks = schedule_data.get(today, [])
+    
+    # Only show one-time tasks that are pending
+    today_tasks = [item for item in schedule_data.get(today, []) if item.get("status") == "pending"]
     recurring_tasks = schedule_data.get("recurring", [])
 
     weekday_name = datetime.now().strftime("%A").lower()
@@ -86,6 +88,9 @@ def get_today_schedule() -> str:
 
     active_recurring = []
     for r in recurring_tasks:
+        # Hide recurring tasks that have already been notified today
+        if r.get("last_notified_date") == today:
+            continue
         d = r.get("days", "daily")
         if d == "daily":
             active_recurring.append(r)
@@ -97,11 +102,11 @@ def get_today_schedule() -> str:
             active_recurring.append(r)
 
     if not today_tasks and not active_recurring:
-        return "You have no tasks or recurring routines scheduled for today, Mr. Pranav."
+        return "You have no remaining tasks or recurring routines scheduled for today, Mr. Pranav."
 
     report = "Here is your scheduled itinerary for today:\n"
     for item in today_tasks:
-        report += f"- [{item['time']}] {item['task']} ({item['status']})\n"
+        report += f"- [{item['time']}] {item['task']}\n"
     for item in active_recurring:
         report += f"- [{item['time']}] 🔁 Recurring: {item['task']}\n"
 
@@ -130,7 +135,13 @@ def get_due_reminders() -> list[dict]:
         if target is None:
             continue
         if target <= now_minutes:
-            due.append(item)
+            # If the reminder is older than 15 minutes, auto-expire it silently
+            if now_minutes - target > 15:
+                item["status"] = "expired"
+                changed = True
+                print(f"[📆 Calendar]: Auto-expired old one-time backlog task: '{item.get('task')}'")
+            else:
+                due.append(item)
 
     # 2. Recurring tasks
     for r in schedule_data.get("recurring", []):
@@ -144,12 +155,18 @@ def get_due_reminders() -> list[dict]:
         if is_today and r.get("last_notified_date") != today:
             target = _parse_time_to_minutes(r.get("time", ""))
             if target is not None and target <= now_minutes:
-                due.append({
-                    "id": r["id"],
-                    "time": r["time"],
-                    "task": f"Recurring Routine: {r['task']}",
-                    "is_recurring": True
-                })
+                # If the recurring task is older than 15 minutes, mark it notified today silently
+                if now_minutes - target > 15:
+                    r["last_notified_date"] = today
+                    changed = True
+                    print(f"[📆 Calendar]: Auto-expired old recurring backlog task: '{r.get('task')}'")
+                else:
+                    due.append({
+                        "id": r["id"],
+                        "time": r["time"],
+                        "task": f"Recurring Routine: {r['task']}",
+                        "is_recurring": True
+                    })
 
     if changed:
         _save_schedule(schedule_data)

@@ -77,7 +77,7 @@
             "time": "20:00",
             "task": "Revise math",
             "days": "weekdays",
-            "last_notified_date": "2026-07-29"
+            "last_notified_date": "2026-07-31"
         }
     ],
     "2026-07-30": [
@@ -99,10 +99,24 @@
             "id": "0d25a546-6c5b-4afc-b6ea-dd4a6645cf51",
             "time": "03:00 PM",
             "task": "Autopilot Code Review",
-            "status": "pending"
+            "status": "notified"
         },
         {
             "id": "87399c09-b703-46be-a719-3171c4528992",
+            "time": "03:00 PM",
+            "task": "Double Booking Test",
+            "status": "notified"
+        }
+    ],
+    "2026-08-01": [
+        {
+            "id": "9c5579ca-781a-46ae-bf57-eb53976acfe5",
+            "time": "03:00 PM",
+            "task": "Autopilot Code Review",
+            "status": "pending"
+        },
+        {
+            "id": "c9ed96d7-c0e2-452b-8e73-f74583fe561c",
             "time": "03:00 PM",
             "task": "Double Booking Test",
             "status": "pending"
