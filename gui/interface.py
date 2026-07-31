@@ -1763,6 +1763,10 @@ class JarvisGUI(QMainWindow):
                 print(f"[📋 Clipboard OCR]: Pre-scanned text successfully. Cached locally.")
                 self.append_text_signal.emit("J.A.R.V.I.S.", "Clipboard Alert: Pre-scanned copied image text and loaded it into active memory buffer. Ask me about the copied image anytime, Sir!")
                 self.add_notif_signal.emit("Clipboard image OCR completed.")
+                
+                # Speak alert
+                from senses.tts_engine import speak
+                threading.Thread(target=speak, args=("Clipboard Alert; I have pre-scanned the copied image text and loaded it into my active memory. Ask me about the image anytime, Sir!",), daemon=True).start()
             else:
                 if os.path.exists(ocr_file):
                     os.remove(ocr_file)
