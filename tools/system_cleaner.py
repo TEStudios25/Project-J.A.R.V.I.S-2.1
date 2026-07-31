@@ -17,14 +17,6 @@ def optimize_system_storage() -> str:
     Cleans system temporary files, caches, and empties the Recycle Bin.
     Returns a status report summarizing the total storage space reclaimed in Megabytes.
     """
-    # Verbal confirmation gate
-    from senses.tts_engine import speak
-    from senses.stt_engine import listen
-    speak("Confirming authorization, sir. Are you sure you want to clean and optimize the system storage?")
-    reply = listen(check_active_func=lambda: True)
-    if not reply or not any(w in reply.lower() for w in ["yes", "confirm", "proceed", "sure", "do it"]):
-        return "System optimization cancelled by user request."
-        
     print("\n[🧹 J.A.R.V.I.S. is executing system storage optimization...]")
     
     bytes_freed = 0

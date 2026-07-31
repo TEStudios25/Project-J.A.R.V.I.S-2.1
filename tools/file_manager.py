@@ -292,14 +292,6 @@ def manage_file_system(action: str, source_path: str, destination_path: str = ""
             return f"Successfully renamed '{os.path.basename(src)}' to: '{os.path.basename(dst)}'"
             
         elif action == "delete":
-            # Verbal confirmation gate
-            from senses.tts_engine import speak
-            from senses.stt_engine import listen
-            speak(f"Confirming authorization, sir. Are you sure you want to delete the file or directory {os.path.basename(src)}?")
-            reply = listen(check_active_func=lambda: True)
-            if not reply or not any(w in reply.lower() for w in ["yes", "confirm", "proceed", "sure", "do it"]):
-                return "Delete action cancelled by user request."
-                
             if os.path.isdir(src):
                 shutil.rmtree(src)
                 return f"Successfully deleted directory '{os.path.basename(src)}'."

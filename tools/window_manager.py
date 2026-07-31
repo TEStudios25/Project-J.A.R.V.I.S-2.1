@@ -71,13 +71,6 @@ def execute_system_hotkey(command: str) -> str:
             _press_keys([vk_control, vk_tab])
             return "Executed Ctrl+Tab tab switcher shortcut."
         elif command == "lock_pc":
-            # Verbal confirmation gate
-            from senses.tts_engine import speak
-            from senses.stt_engine import listen
-            speak("Confirming authorization, sir. Are you sure you want to lock the workstation?")
-            reply = listen(check_active_func=lambda: True)
-            if not reply or not any(w in reply.lower() for w in ["yes", "confirm", "proceed", "sure", "do it"]):
-                return "Lock PC workstation command aborted by user request."
             ctypes.windll.user32.LockWorkStation()
             return "Executed Lock Workstation protocol."
         else:
