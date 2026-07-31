@@ -1423,7 +1423,6 @@ class JarvisGUI(QMainWindow):
     def handle_wake_from_clap(self):
         if not self.mic_active:
             self.set_microphone_state(True)
-            self.play_sfx("success.wav")
             wake_msg = "Welcome back, Sir. I'm right here."
             self.append_text_signal.emit("J.A.R.V.I.S.", wake_msg)
             self.add_notif_signal.emit("Double-clap wake triggered.")
@@ -1542,7 +1541,6 @@ class JarvisGUI(QMainWindow):
             if msg.message == 0x0312:
                 if msg.wParam == 200: # Alt+V Hotkey ID
                     self.toggle_microphone_state()
-                    self.play_sfx("success.wav")
                     state_str = "ACTIVE" if self.mic_active else "MUTED"
                     self.tray_icon.showMessage(
                         "J.A.R.V.I.S. Mic Status",
@@ -1613,7 +1611,6 @@ class JarvisGUI(QMainWindow):
                 mute_msg = f"Audio Shield: Auto-muted microphone because you are active in: '{buf.value}'."
                 self.append_text_signal.emit("J.A.R.V.I.S.", mute_msg)
                 self.add_notif_signal.emit("Audio Shield active: microphone muted.")
-                self.play_sfx("success.wav")
                 
                 # Speak warning dynamically
                 from senses.tts_engine import speak
@@ -1736,7 +1733,6 @@ class JarvisGUI(QMainWindow):
                     alert_msg = f"Clipboard Alert: Detected a video URL in your clipboard: '{text}'. Would you like me to analyze it, Sir?"
                     self.append_text_signal.emit("J.A.R.V.I.S.", alert_msg)
                     self.add_notif_signal.emit("Video link copied to clipboard.")
-                    self.play_sfx("success.wav")
                     
                     # Speak alert
                     from senses.tts_engine import speak
@@ -1767,7 +1763,6 @@ class JarvisGUI(QMainWindow):
                 print(f"[📋 Clipboard OCR]: Pre-scanned text successfully. Cached locally.")
                 self.append_text_signal.emit("J.A.R.V.I.S.", "Clipboard Alert: Pre-scanned copied image text and loaded it into active memory buffer. Ask me about the copied image anytime, Sir!")
                 self.add_notif_signal.emit("Clipboard image OCR completed.")
-                self.play_sfx("success.wav")
             else:
                 if os.path.exists(ocr_file):
                     os.remove(ocr_file)

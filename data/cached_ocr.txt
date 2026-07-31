@@ -1,95 +1,41 @@
-PROJECT J.A.R.V.I.S. 2.0 Command Center
-
-J.A.R.V.I.S. 2.0
-Your Personal Assistant
-
-COGNITIVE USER BIO
-User: Mr. Pranav
-Role: Developer
-Focus: Personal AI Assistant
-Mood: Calm
-PHONE LINK: OFFLINE
-Core Sync: 0 memory links active
-
-ENVIRONMENT RADAR
-☁ Guntur: Cloudy
-Temp: 32°C
-
-SYSTEM TELEMETRY
-CPU: 100.0%
-RAM: 64.0% (5.74GB free)
-Disk: 98.1% used (2.3GB free of 118.66GB)
-GPU: Intel(R) HD Graphics 4400 | Load: 75.3%
-Battery: Desktop mode (AC Power)
-
-SYSTEM STATUS LOG
-[08:45:22 PM] Clipboard image OCR
-completed.
-[08:45:39 PM] ⚠ SYSTEM WARNING:
-CPU utilization high (100%)
-[08:46:26 PM] Microphone capture
-active.
-[08:46:40 PM] Microphone capture
-standby.
-[08:46:43 PM] ⚠ SYSTEM WARNING:
-CPU utilization high (100%)
-[08:46:49 PM] User command: 'Hello
-J.A.R.V.I.S.!!!'
-[08:46:49 PM] Querying brain
-server...
-[08:46:51 PM] Neural reply
-complete.
-
-• SYSTEM ACTIVE // WORKSTATION STABLE
-
-PROJECT J.A.R.V.I.S. 2.0
-
-08:47:08 PM
-FRI 31 JUL 2026
-
-COMMAND WORKSPACE
-CHAT HISTORY
-
-TASK & SCHEDULE WORKSPACE
-Status: Idle // Waiting for command input
-Agenda:
-- [03:00 PM] Autopilot Code Review (notified)
-- [03:00 PM] Double Booking Test (notified)
-- [20:00] ☑ Recurring: Revise math
-Active Checklist:
-• All tasks completed!
-
-J.A.R.V.I.S.
-Sir, this is your scheduled reminder. At 03:00 PM,
-you asked me to remind you: Double Booking
-Test.
-
-J.A.R.V.I.S.
-Sir, this is your scheduled reminder. At 20:00,
-you asked me to remind you: Recurring Routine:
-Revise math.
-
-J.A.R.V.I.S.
-Clipboard Alert: Pre-scanned copied image text
-and loaded it into active memory buffer. Ask me
-about the copied image anytime, Sir!
-
-J.A.R.V.I.S.
-Clipboard Alert: Pre-scanned copied image text
-and loaded it into active memory buffer. Ask me
-about the copied image anytime, Sir!
-
-MR. PRANAV
-Hello J.A.R.V.I.S.!!!
-
-J.A.R.V.I.S.
-Hello, Mr. Pranav! You're in a good mood, I see.
-I'm firing on all cylinders and ready for whatever
-you've got—what's on the agenda for this fine
-Friday night?
-
-SYSTEM STATUS: STANDBY // MICROPHONE MUTED
-
-Enter system command parameter...
-
-G
+Antigravity File View Window
+[1] Install IDE
+Project-J.A.R.V.I.S.-2.2 / Recent Conversation Topic Inquiry
+Yo that ting tong sound is coming even when i use the shortcut to on mic and off mic and send any response. But i want
+that sound to be fixed to only when JARVIS Responds like in old models
+Exploring 1 search
+Searched success.wav 8 results
+C:\Windows\system32\cmd.exe
+[ ] J.A.R.V.I.S. is checking today's calendar...]
+[ ] J.A.R.V.I.S. is checking today's calendar...]
+[ ] J.A.R.V.I.S. is checking today's calendar...]
+[ ] J.A.R.V.I.S. is checking today's calendar...]
+[ ] J.A.R.V.I.S. is checking today's calendar...]
+[ ] J.A.R.V.I.S. is checking today's calendar...]
+[ ] J.A.R.V.I.S. is checking today's calendar...]
+[ ] J.A.R.V.I.S. is checking today's calendar...]
+[ ] J.A.R.V.I.S. is checking today's calendar...]
+[ ] J.A.R.V.I.S. is checking today's calendar...]
+[ ] J.A.R.V.I.S. is checking today's calendar...]
+[ ] J.A.R.V.I.S. is checking today's calendar...]
+[ ] J.A.R.V.I.S. is checking today's calendar...]
+[ ] J.A.R.V.I.S. is checking today's calendar...]
+[ ] J.A.R.V.I.S. is checking today's calendar...]
++ New Conversation
+Conversation History
+Scheduled Tasks
+Projects
+Project-J.A.R.V.I.S.-2.2
+Recent Conversation Topic...
+Project J.A.R.V.I.S 2.1
+Project J.A.R.V.I.S 2.1 2d
+Project J.A.R.V.I.S 2.0
+Project J.A.R.V.I.S 2.0 10d
+Settings
+And that CMD is running in background like VS Code terminal. I dont want it
+Gemini 3.5 Flash (Medium) ^
+Activate Windows
+Go to Settings to activate Windows.
+1
+21:15
+31-07-2026
