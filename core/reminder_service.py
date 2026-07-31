@@ -38,7 +38,8 @@ class ReminderService:
                     print(f"\n[⏰ REMINDER]: {message}")
                     if self.on_reminder:
                         self.on_reminder(message)
-                    threading.Thread(target=speak, args=(message,), daemon=True).start()
+                    speak(message)
+                    time.sleep(1.0)
                     mark_reminder_notified(item["id"])
             except Exception as exc:
                 print(f"[Reminder service warning]: {exc}")
