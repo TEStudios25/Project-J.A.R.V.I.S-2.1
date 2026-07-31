@@ -17,7 +17,7 @@ def get_whisper_model():
         try:
             from faster_whisper import WhisperModel
             print("\n[🎙️ STT Engine]: Initializing Local Faster-Whisper (tiny, int8 CPU)...")
-            _whisper_model = WhisperModel("tiny", device="cpu", compute_type="int8")
+            _whisper_model = WhisperModel("tiny", device="cpu", compute_type="int8", cpu_threads=1)
             print("[🎙️ STT Engine]: Local Faster-Whisper Model Ready.")
         except Exception as e:
             print(f"[🎙️ STT Engine Error]: Failed to load Faster-Whisper: {e}")

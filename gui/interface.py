@@ -42,6 +42,9 @@ class TelemetryWorker(QThread):
         from core.system_monitor import get_disk_usage, get_battery_status, get_gpu_status
         from core.memory import load_memory
         
+        loop_count = 0
+        phone_online = False
+        
         while True:
             try:
                 # Non-blocking CPU reading
@@ -87,19 +90,24 @@ class TelemetryWorker(QThread):
                 except Exception:
                     pass
                 
-                phone_online = False
                 if phone_ip:
-                    try:
-                        res = subprocess.run(
-                            f"ping -n 1 -w 500 {phone_ip}",
-                            shell=True,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
-                            creationflags=0x08000000
-                        )
-                        phone_online = (res.returncode == 0)
-                    except Exception:
-                        pass
+                    # Only ping phone every 20 seconds (10 iterations) to minimize CPU subprocess spawning overhead
+                    if loop_count % 10 == 0:
+                        try:
+                            res = subprocess.run(
+                                f"ping -n 1 -w 500 {phone_ip}",
+                                shell=True,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                creationflags=0x08000000
+                            )
+                            phone_online = (res.returncode == 0)
+                        except Exception:
+                            pass
+                else:
+                    phone_online = False
+                
+                loop_count += 1
                 
                 # Send back payload to GUI thread
                 self.stats_updated.emit({

@@ -4,7 +4,7 @@
   const height = container.clientHeight || window.innerHeight;
 
   // --- PERFORMANCE MODE STATE ---
-  let lowPowerMode = false; // Default to Ultra Bloom mode
+  let lowPowerMode = true; // Default to Low-Power Mode for Intel HD Graphics compatibility
 
   // --- SCENE & CAMERA ---
   const scene = new THREE.Scene();
@@ -14,7 +14,7 @@
 
   const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
   renderer.setSize(width, height);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Default high resolution for Ultra Bloom
+  renderer.setPixelRatio(lowPowerMode ? 1.0 : Math.min(window.devicePixelRatio, 1.5)); // Default high resolution for Ultra Bloom
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.95;
   container.appendChild(renderer.domElement);
