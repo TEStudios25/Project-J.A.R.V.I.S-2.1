@@ -182,6 +182,10 @@ def speak(text: str) -> str:
     # 1. Strip out markdown symbols (*, #, _, etc.) 
     clean_text = re.sub(r'[*#_~`]', '', text)
     
+    # Force a natural TTS pause/break by replacing em-dashes, double hyphens, and clause hyphens with a semicolon
+    clean_text = re.sub(r'—|--', '; ', clean_text)
+    clean_text = re.sub(r'\s+-\s+', '; ', clean_text)
+    
     # 2. Strip emojis
     clean_text = clean_text.encode('ascii', 'ignore').decode('ascii')
     
