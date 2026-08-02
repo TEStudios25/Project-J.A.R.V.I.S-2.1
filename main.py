@@ -41,40 +41,45 @@ from core.security import verify_access
 
 def system_boot_sequence(workspace_ref=None):
     """Plays the epic sci-fi startup terminal sequence and verbal greeting."""
+    import random
+    import datetime
+
     print("\n=======================================================")
     print("||        PROJECT J.A.R.V.I.S. 2.x INITIATED         ||")
     print("=======================================================")
-    time.sleep(0.5)
+    time.sleep(0.4)
 
-    # Boot Dialog 1
-    msg1 = "Powering up the Systems"
-    print(f"[🔋 System]: {msg1}...")
+    # 1. Futuristic Boot Dialogue Pool (Picks 3 random lines on each start!)
+    boot_dialogue_pool = [
+        ("🧠", "Allocating neural network memory modules and quantum cognitive buffers"),
+        ("⚙️", "Calibrating Voice, Vision, and Multimodal Neural interfaces"),
+        ("📡", "Establishing encrypted global server telemetry and satellite sync"),
+        ("🔋", "Powering up core sub-routines and establishing cybernetic environment radar"),
+        ("⚡", "Pre-heating active workspace modules and executing zero-latency system diagnostics")
+    ]
     
-    # Boot Dialog 2
-    msg2 = "Allocating neural network memory modules"
-    print(f"[🧠 System]: {msg2}...")
-    
-    # Boot Dialog 3
-    msg3 = "Establishing secure connection to global servers"
-    print(f"[📡 System]: {msg3}...")
-    
-    # Boot Dialog 4
-    msg4 = "Calibrating Voice and Vision interfaces"
-    print(f"[⚙️ System]: {msg4}...")
-    
-    # Boot Dialog 5
-    msg5 = "Graphic User Interface locked and loaded"
-    print(f"[✅ System]: {msg5}.")
-    
-    # The iconic startup phrase (Officially addressing Mr. Pranav!)
-    import datetime
+    # Pick 3 random futuristic lines for lively, non-repeating boot status sequence
+    selected_dialogues = random.sample(boot_dialogue_pool, 3)
+    for icon, text in selected_dialogues:
+        print(f"[{icon} System]: {text}...")
+        time.sleep(0.3)
+        
+    print("[✅ System]: Graphic User Interface locked, loaded, and fully operational.")
+    time.sleep(0.3)
+
+    # 2. Spoken Greeting Pool (Randomly selected per start to stay lively and non-repetitive!)
     hour = datetime.datetime.now().hour
-    if hour < 12:
-        final_msg = "Good morning, Sir. J.A.R.V.I.S. is online, caffeinated, and ready for your orders. No cap."
-    elif 12 <= hour < 17:
-        final_msg = "Good afternoon, Sir. System is online, green across the board. What are we cooking today?"
-    else:
-        final_msg = "Good evening, Sir. Systems are online and fully optimized. Let's make things happen."
+    time_greeting = "Good morning" if hour < 12 else ("Good afternoon" if 12 <= hour < 17 else "Good evening")
+    
+    greeting_pool = [
+        f"{time_greeting}, Sir. Systems are online, quantum telemetry is green, and I am locked in for your commands.",
+        f"{time_greeting}, Sir. All neural pathways are firing at maximum efficiency. Let's make things happen—no cap.",
+        f"Systems locked and loaded, Sir. Dual-chat neural routing is online and ready. What's on the agenda today?",
+        f"{time_greeting}, Sir. Active memory buffers are clear, vision and speech engines calibrated. Ready whenever you are.",
+        f"J.A.R.V.I.S. 2.2 fully operational, Sir. All security protocols cleared. How can I assist you right now?"
+    ]
+    
+    final_msg = random.choice(greeting_pool)
 
     print(f"\n[🤖 J.A.R.V.I.S.]: {final_msg}\n")
     speak(final_msg)
