@@ -54,15 +54,9 @@ def recognize_audio_gemini(audio_path: str) -> str:
             time.sleep(0.3)
             
         prompt = (
-            "You are an expert audio analysis and speech transcription engine. "
-            "Listen to this voice recording. First, transcribe the spoken words and translate them to English. "
-            "Second, analyze the acoustic qualities of the raw audio bytes: emotional tone (e.g., Calm, Excited, Fatigued, Rushed, Frustrated, Happy, Sad, Sorrow), "
-            "speed of speaking (slow/normal/fast), and the presence of emotional gaps or long pauses (represent stutters or pauses as '...'). "
-            "Format your output exactly like this: "
-            "[TONE: <emotional tone>, GAPS: <yes/no>, SPEED: <slow/normal/fast>] <translated English transcript>. "
-            "For example: '[TONE: Sad, GAPS: yes, SPEED: slow] I don't know... what to do.' "
-            "Keep the bracketed metadata block short, using only one of the valid mood words. "
-            "Output ONLY this formatted string. If there is no speech, output nothing."
+            "Listen to this voice recording. Transcribe the speech and translate it directly into English. "
+            "Output ONLY the clean translated English text verbatim, with no markdown, brackets, tone labels, "
+            "explanations, or warnings. If there is no speech, output nothing."
         )
         response = model.generate_content([audio_file, prompt])
         
@@ -72,7 +66,10 @@ def recognize_audio_gemini(audio_path: str) -> str:
         except Exception:
             pass
             
-        return response.text.strip() if response.text else ""
+        import re
+        raw_res = response.text.strip() if response.text else ""
+        clean_res = re.sub(r"\[.*?\]", "", raw_res).strip()
+        return clean_res
     except Exception as e:
         print(f"[🎙️ STT Engine]: Gemini Cloud STT Error -> {e}")
         return ""
@@ -107,7 +104,7 @@ def recognize_audio_local(audio) -> str:
 # 1. Create the recognizer globally so it remembers its settings
 recognizer = sr.Recognizer()
 recognizer.dynamic_energy_threshold = False
-recognizer.energy_threshold = 280   # Lowered to 280 to easily catch whispers, low voices, and fillers!
+recognizer.energy_threshold = 600   # Raised to 600 to prevent fan noise / ambient room triggers
 recognizer.pause_threshold = 0.5    # Responsive 0.5-second timeout before auto-submitting
 
 is_calibrated = False # Global flag to ensure calibration runs only once on startup
@@ -201,8 +198,8 @@ def listen(check_active_func=None) -> str:
         if not is_calibrated and not is_speaking:
             print("\n[System]: Calibrating microphone for ambient noise...")
             recognizer.adjust_for_ambient_noise(source, duration=0.8)
-            # Increase sensitivity slightly to catch whispers, clamp max to 600 to prevent fan noise locks
-            recognizer.energy_threshold = min(600, max(90, recognizer.energy_threshold * 0.80))
+            # Clamp energy threshold to a safe 500 minimum to prevent fan noise triggers
+            recognizer.energy_threshold = max(500, recognizer.energy_threshold * 1.1)
             is_calibrated = True
             print(f"[System]: Calibration complete. Energy threshold set to: {int(recognizer.energy_threshold)}")
         
@@ -240,6 +237,11 @@ def listen(check_active_func=None) -> str:
             except Exception:
                 rms = 0
 
+            # Noise Gate: Filter out ambient room noise/fan hum false positives
+            if rms < 200:
+                print(f"[System]: Background noise ignored (RMS: {round(rms, 1)} < 200)")
+                return ""
+
             # Translate the audio (Telugu/others to English)
             use_local = os.getenv("USE_LOCAL_WHISPER", "false").lower() == "true" # Default to Gemini Cloud STT (highly accurate)
             query = ""
@@ -271,21 +273,16 @@ def listen(check_active_func=None) -> str:
                     # Reraise or handle to catch UnknownValueError / RequestError
                     raise e
 
-            # Inject acoustic expression markers into the query text based on physical volume (RMS)
-            if query.strip():
-                if rms > 1600:
-                    query = f"[SPOKEN LOUDLY] {query.upper()}!!!"
-                    print(f"[System]: Acoustic Expression: Shouting/Loud Voice Detected (RMS: {round(rms, 1)})")
-                elif 0 < rms < 110:
-                    query = f"[WHISPERED] {query.lower()}"
-                    print(f"[System]: Acoustic Expression: Whisper Detected (RMS: {round(rms, 1)})")
+            import re
+            query = re.sub(r"\[.*?\]", "", query).strip()
 
             # Set whisper mode state on TTS engine
             import senses.tts_engine
-            if (0 < rms < 110) or "whisper" in query.lower() or "[whispered]" in query.lower():
+            if (0 < rms < 110) or "whisper" in query.lower():
                 senses.tts_engine.whisper_mode = True
                 print(f"[System]: Whisper Mode Active (RMS: {round(rms, 1)})")
             else:
+                senses.tts_engine.whisper_mode = False
                 senses.tts_engine.whisper_mode = False
             
             # Echo-Cancellation & Override Filtering

@@ -406,6 +406,7 @@ class JarvisGUI(QMainWindow):
         self.clipboard = QApplication.clipboard()
         self.clipboard.dataChanged.connect(self.handle_clipboard_change)
         self.last_clipboard_text = ""
+        self.last_clipboard_image_hash = ""
 
         # Global hotkey registration deferred to showEvent
         print("[System]: Global hotkey deferred to window visibility sequence.")
@@ -1614,15 +1615,10 @@ class JarvisGUI(QMainWindow):
         
         for kw in shield_keywords:
             if kw in title:
-                # Auto-mute microphone to protect audio stream
-                self.set_microphone_state(False)
-                mute_msg = f"Audio Shield: Auto-muted microphone because you are active in: '{buf.value}'."
-                self.append_text_signal.emit("J.A.R.V.I.S.", mute_msg)
-                self.add_notif_signal.emit("Audio Shield active: microphone muted.")
-                
-                # Speak warning dynamically
-                from senses.tts_engine import speak
-                threading.Thread(target=speak, args=("Microphone muted to protect your audio stream.",), daemon=True).start()
+                # Auto-mute microphone silently to protect audio stream
+                if self.mic_active:
+                    self.set_microphone_state(False)
+                    self.add_notif_signal.emit(f"Audio Shield active: microphone muted ({kw}).")
                 break
 
     def present_reply_in_hud(self, query: str, reply: str):
@@ -1749,7 +1745,20 @@ class JarvisGUI(QMainWindow):
         elif mime_data.hasImage():
             image = self.clipboard.image()
             if not image.isNull():
-                print("[📋 Clipboard]: Image detected. Starting background OCR pre-scanning...")
+                import hashlib
+                try:
+                    ptr = image.bits()
+                    ptr.setsize(image.byteCount())
+                    img_bytes = bytes(ptr)
+                    img_hash = hashlib.md5(img_bytes).hexdigest()
+                except Exception:
+                    img_hash = str(image.cacheKey())
+                    
+                if hasattr(self, "last_clipboard_image_hash") and self.last_clipboard_image_hash == img_hash:
+                    return
+                self.last_clipboard_image_hash = img_hash
+                
+                print("[📋 Clipboard]: New image detected. Starting background OCR pre-scanning...")
                 threading.Thread(target=self.run_background_clipboard_ocr, args=(image,), daemon=True).start()
 
     def run_background_clipboard_ocr(self, qimage):
@@ -1771,10 +1780,6 @@ class JarvisGUI(QMainWindow):
                 print(f"[📋 Clipboard OCR]: Pre-scanned text successfully. Cached locally.")
                 self.append_text_signal.emit("J.A.R.V.I.S.", "Clipboard Alert: Pre-scanned copied image text and loaded it into active memory buffer. Ask me about the copied image anytime, Sir!")
                 self.add_notif_signal.emit("Clipboard image OCR completed.")
-                
-                # Speak alert
-                from senses.tts_engine import speak
-                threading.Thread(target=speak, args=("Clipboard Alert; I have pre-scanned the copied image text and loaded it into my active memory. Ask me about the image anytime, Sir!",), daemon=True).start()
             else:
                 if os.path.exists(ocr_file):
                     os.remove(ocr_file)
