@@ -59,9 +59,12 @@ def recognize_audio_gemini(audio_path: str) -> str:
             time.sleep(0.3)
             
         prompt = (
-            "Listen to this voice recording. Transcribe the speech and translate it directly into English. "
-            "Output ONLY the clean translated English text verbatim, with no markdown, brackets, tone labels, "
-            "explanations, or warnings. If there is no speech, output nothing."
+            "You are an expert multilingual speech-to-text translator. "
+            "Listen carefully to the audio recording. The speaker may speak in Telugu, Hindi, English, or a mix of languages (e.g., Telugu mixed with English). "
+            "Your task is to understand the exact intended meaning of what the speaker said, and output the clear, natural, accurate English translation. "
+            "If the speaker spoke in English, output their exact English words. "
+            "If the speaker spoke in Telugu, Hindi, or another language, translate their exact meaning into clear English. "
+            "Output ONLY the final English translation verbatim. Do NOT add notes, explanations, language labels, or punctuation marks like brackets."
         )
         response = model.generate_content([audio_file, prompt])
         
@@ -273,10 +276,15 @@ def listen(check_active_func=None) -> str:
             
             if not query:
                 try:
+                    # Priority 1: English Google STT
                     query = recognizer.recognize_google(audio).lower()
-                except Exception as e:
-                    # Reraise or handle to catch UnknownValueError / RequestError
-                    raise e
+                except Exception:
+                    try:
+                        # Priority 2: Telugu (te-IN) Google STT fallback
+                        query = recognizer.recognize_google(audio, language="te-IN").lower()
+                        print(f"[🎙️ STT Engine]: Recognized Telugu speech fallback: '{query}'")
+                    except Exception as e:
+                        raise e
 
             import re
             query = re.sub(r"\[.*?\]", "", query).strip()
