@@ -131,23 +131,90 @@ def get_best_microphone_index():
 
 chosen_mic_index = get_best_microphone_index()
 
-def format_punctuation(query: str) -> str:
-    """Restores full capitalization and ending punctuation (?, .) for speech queries."""
+def format_punctuation_with_voice_prosody(query: str, audio=None) -> str:
+    """
+    Analyzes raw speech audio (energy, peak spikes, trailing pauses) to add acoustic expressions:
+    - Exclamation Marks (!) for high volume / excited / emphatic speech
+    - Ellipses (...) for hesitations, trailing pauses, and slow speech
+    - Question Marks (?) for questions or rising pitch intonation
+    - Commas (,) for mid-speech pauses
+    """
     if not query:
         return ""
+
     query = query.strip()
+    if not query:
+        return ""
+
+    # Capitalize first letter
     query = query[0].upper() + query[1:]
-    if not query.endswith(('.', '?', '!', ';', ':')):
-        question_words = (
-            "what", "why", "how", "when", "where", "who", "which", 
-            "can", "could", "would", "should", "is", "are", "do", 
-            "does", "did", "am", "was", "were", "will", "shall", "tell", "show"
-        )
-        first_word = query.split()[0].lower() if query.split() else ""
+
+    # Calculate acoustic features from audio frame data if available
+    peak_rms = 0
+    mean_rms = 0
+    trailing_pause = False
+    mid_pauses = 0
+
+    if audio and hasattr(audio, "frame_data") and audio.frame_data:
+        try:
+            import struct
+            import math
+            frame_data = audio.frame_data
+            sample_count = len(frame_data) // 2
+            if sample_count > 0:
+                shorts = struct.unpack(f"<{sample_count}h", frame_data)
+                
+                # Peak and Mean RMS
+                abs_samples = [abs(s) for s in shorts]
+                peak_rms = max(abs_samples)
+                mean_rms = math.sqrt(sum(s*s for s in shorts) / sample_count)
+                
+                # Frame chunking (50ms chunks at 16kHz = 800 samples)
+                chunk_size = 800
+                chunks = [shorts[i:i+chunk_size] for i in range(0, len(shorts), chunk_size) if len(shorts[i:i+chunk_size]) == chunk_size]
+                if chunks:
+                    chunk_rms = [math.sqrt(sum(s*s for s in c) / len(c)) for c in chunks]
+                    
+                    # Mid-sentence pauses (chunks below 50 RMS in middle of speech)
+                    if len(chunk_rms) > 4:
+                        mid_chunks = chunk_rms[1:-2]
+                        mid_pauses = sum(1 for r in mid_chunks if r < 50)
+                        
+                    # Trailing pause / trail off (last 2 chunks are quiet < 40 RMS)
+                    if len(chunk_rms) >= 3 and chunk_rms[-1] < 40 and chunk_rms[-2] < 40:
+                        trailing_pause = True
+        except Exception:
+            pass
+
+    # 1. Check for Exclamation / High Energy Spikes (!)
+    is_emphatic_word = any(w in query.lower().split() for w in ["stop", "wait", "no", "yes", "hey", "hurry", "quick", "wow", "jarvis", "help", "system", "shut up"])
+    is_high_volume = (peak_rms > 5500 or mean_rms > 350)
+    
+    if is_high_volume or (is_emphatic_word and mean_rms > 200):
+        query = query.rstrip('.?!') + "!"
+        return query
+
+    # 2. Check for Hesitation / Trailing Off / Pauses (...)
+    hesitation_words = ("umm", "uh", "err", "well", "maybe", "i think", "let me see", "like", "so")
+    has_hesitation_word = any(query.lower().startswith(hw) or query.lower().endswith(hw) for hw in hesitation_words)
+    
+    if trailing_pause or has_hesitation_word or mid_pauses >= 3:
+        query = query.rstrip('.?!') + "..."
+        return query
+
+    # 3. Check for Question Words / Structure (?)
+    question_words = (
+        "what", "why", "how", "when", "where", "who", "which", 
+        "can", "could", "would", "should", "is", "are", "do", 
+        "does", "did", "am", "was", "were", "will", "shall", "tell", "show"
+    )
+    first_word = query.split()[0].lower() if query.split() else ""
+    if not query.endswith(('.', '?', '!', ';', ':', '...')):
         if first_word in question_words:
             query += "?"
         else:
             query += "."
+
     return query
 
 def listen(check_active_func=None) -> str:
@@ -229,7 +296,7 @@ def listen(check_active_func=None) -> str:
 
         import re
         query = re.sub(r"\[.*?\]", "", query).strip()
-        query = format_punctuation(query)
+        query = format_punctuation_with_voice_prosody(query, audio)
 
         # 🚨 REAL-TIME SPEECH BARGE-IN INTERRUPT 🚨
         # If user speaks while J.A.R.V.I.S. is talking out loud, INSTANTLY cut off TTS playback!
