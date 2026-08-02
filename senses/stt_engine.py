@@ -42,7 +42,14 @@ def recognize_audio_local(audio) -> str:
         with open(temp_wav_path, "wb") as f:
             f.write(audio.get_wav_data())
             
-        segments, info = model.transcribe(temp_wav_path, task="translate")
+        segments, info = model.transcribe(
+            temp_wav_path,
+            task="translate",
+            beam_size=1,
+            best_of=1,
+            temperature=0.0,
+            vad_filter=True
+        )
         text = "".join([segment.text for segment in segments]).strip().lower()
         return text
     except Exception as e:
@@ -60,7 +67,7 @@ def recognize_audio_local(audio) -> str:
 recognizer = sr.Recognizer()
 recognizer.dynamic_energy_threshold = False
 recognizer.energy_threshold = 280   # Lowered to 280 to easily catch whispers, low voices, and fillers!
-recognizer.pause_threshold = 0.8    # Responsive 0.8-second timeout before auto-submitting
+recognizer.pause_threshold = 0.5    # Responsive 0.5-second timeout before auto-submitting
 
 is_calibrated = False # Global flag to ensure calibration runs only once on startup
 
@@ -174,7 +181,7 @@ def listen(check_active_func=None) -> str:
                     recognizer.pause_threshold = old_pt
             else:
                 # NORMAL MODE: Stable long-timeout to keep stream active
-                recognizer.pause_threshold = 0.8
+                recognizer.pause_threshold = 0.5
                 audio = recognizer.listen(source, timeout=10, phrase_time_limit=12)
                 print("[System]: Processing voice...")
             
