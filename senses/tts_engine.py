@@ -164,12 +164,47 @@ async def _stream_fast_audio(text: str, voice: str = None):
     finally:
         current_channel = None
 
+def normalize_speech_text(text: str) -> str:
+    """Transforms raw text into natural, fluid human spoken English with realistic pause phrasing."""
+    if not text:
+        return ""
+
+    # Strip markdown symbols (*, #, _, ~, `, >, |)
+    clean = re.sub(r'[*#_~`>|]', '', text)
+    # Strip bracketed logs like [System: ...] or [TONE: ...]
+    clean = re.sub(r'\[.*?\]', '', clean)
+
+    # Expand technical symbols into natural spoken words
+    clean = re.sub(r'°C', ' degrees Celsius', clean)
+    clean = re.sub(r'°F', ' degrees Fahrenheit', clean)
+    clean = re.sub(r'%', ' percent', clean)
+    clean = re.sub(r'\be\.g\.\b', 'for example', clean, flags=re.IGNORECASE)
+    clean = re.sub(r'\bi\.e\.\b', 'that is', clean, flags=re.IGNORECASE)
+    clean = re.sub(r'\betc\.\b', 'et cetera', clean, flags=re.IGNORECASE)
+    clean = re.sub(r'\bvs\.\b|\bvs\b', 'versus', clean, flags=re.IGNORECASE)
+    clean = re.sub(r'\b(&)\b', 'and', clean)
+    clean = re.sub(r'\b(@)\b', 'at', clean)
+
+    # Replace em-dashes, double hyphens, and colons with natural pause commas
+    clean = re.sub(r'—|--', ', ', clean)
+    clean = re.sub(r':', ', ', clean)
+    clean = re.sub(r'\s+-\s+', ', ', clean)
+
+    # Strip emojis / non-ascii characters
+    clean = clean.encode('ascii', 'ignore').decode('ascii')
+
+    # Ensure spaces after commas and periods for natural speech pause pacing
+    clean = re.sub(r',([^\s])', r', \1', clean)
+    clean = re.sub(r'\.([^\s\.\?\!])', r'. \1', clean)
+
+    return clean.strip()
+
 def speak(text: str) -> str:
-    """Reads text aloud using Neural TTS. Strips markdown and emojis for speed."""
+    """Reads text aloud using Neural TTS with natural human spoken sentence phrasing."""
     global media_was_paused
     media_was_paused = False
     speaking_state["is_speaking"] = True
-    
+
     # Check if media is currently playing
     try:
         from tools.system_media import is_media_playing, _send_key
@@ -181,16 +216,8 @@ def speak(text: str) -> str:
             time.sleep(0.3)
     except Exception:
         pass
-    
-    # 1. Strip out markdown symbols (*, #, _, etc.) 
-    clean_text = re.sub(r'[*#_~`]', '', text)
-    
-    # Force a natural TTS pause/break by replacing em-dashes, double hyphens, and clause hyphens with a semicolon
-    clean_text = re.sub(r'—|--', '; ', clean_text)
-    clean_text = re.sub(r'\s+-\s+', '; ', clean_text)
-    
-    # 2. Strip emojis
-    clean_text = clean_text.encode('ascii', 'ignore').decode('ascii')
+
+    clean_text = normalize_speech_text(text)
     
     try:
         asyncio.run(_stream_fast_audio(clean_text))
