@@ -90,6 +90,15 @@ def launch_orb_window():
             background_color="#020610"
         )
         webview.start(debug=False, storage_path=cache_dir)
+
+        # When 3D Orb Window is closed by user, shutdown J.A.R.V.I.S. completely
+        print("\n[System]: 3D Orb Core Window closed. Initiating complete J.A.R.V.I.S. shutdown...")
+        try:
+            import subprocess
+            subprocess.run('taskkill /f /im python.exe /fi "COMMANDLINE eq *main.py*"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+        os._exit(0)
     except Exception as e:
         print(f"[⚠️ 3D Orb Window Launch Warning]: {e}")
 

@@ -1510,27 +1510,27 @@ class JarvisGUI(QMainWindow):
             self.set_microphone_state(False)
             
     def closeEvent(self, event):
-        if not hasattr(self, "_exiting_completely") or not self._exiting_completely:
-            event.ignore()
-            self.hide()
-            self.add_notif_signal.emit("Console minimized to system tray.")
-            self.tray_icon.showMessage(
-                "J.A.R.V.I.S. Core",
-                "System minimized to tray. Armed and listening.",
-                QSystemTrayIcon.Information,
-                2000
-            )
-        else:
-            # Unregister global hotkey
-            try:
-                if hasattr(self, "user32"):
-                    self.user32.UnregisterHotKey(int(self.winId()), 200)
-            except Exception:
-                pass
-            # Clean stop of clap listener stream
-            if hasattr(self, "clap_listener") and self.clap_listener:
-                self.clap_listener.stop()
-            event.accept()
+        print("\n[System]: Command Center Window closed by user. Initiating complete J.A.R.V.I.S. shutdown...")
+        # Unregister global hotkey
+        try:
+            if hasattr(self, "user32"):
+                self.user32.UnregisterHotKey(int(self.winId()), 200)
+        except Exception:
+            pass
+        # Clean stop of clap listener stream
+        if hasattr(self, "clap_listener") and self.clap_listener:
+            self.clap_listener.stop()
+
+        # Kill 3D Orb window process
+        try:
+            import subprocess
+            subprocess.run('taskkill /f /im python.exe /fi "COMMANDLINE eq *orb_window.py*"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+
+        event.accept()
+        import os
+        os._exit(0)
 
     def nativeEvent(self, eventType, message):
         import ctypes
