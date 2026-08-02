@@ -1257,7 +1257,7 @@ class JarvisGUI(QMainWindow):
     def voice_listening_worker(self):
         while True:
             if not self.mic_active:
-                time.sleep(0.2)
+                time.sleep(0.05)
                 continue
             
             voice_query = listen(check_active_func=lambda: self.mic_active)
@@ -1320,13 +1320,11 @@ class JarvisGUI(QMainWindow):
             self.append_text_signal.emit("SYSTEM", f"Core Processing Error Matrix: {str(e)}")
             self.add_notif_signal.emit(f"Core error: {str(e)[:25]}...")
             
-        self.update_task_status_signal.emit("Status: Idle // Waiting for command input")
-        if self.mic_active:
-            self.update_status_signal.emit("SYSTEM STATUS: LISTENING ACTIVE // MIC FEED LIVE")
-            self.wave_widget.is_active = True
-        else:
-            self.update_status_signal.emit("SYSTEM STATUS: STANDBY // MICROPHONE MUTED")
-            self.wave_widget.is_active = False
+        self.update_task_status_signal.emit("Status: Idle // Listening for command input")
+        # Ensure microphone state remains explicitly active & live for instant continuous conversation
+        self.set_microphone_state(True)
+        self.update_status_signal.emit("SYSTEM STATUS: LISTENING ACTIVE // MIC FEED LIVE")
+        self.wave_widget.is_active = True
 
     def handle_confirmation_input(self, text: str):
         clean_txt = text.lower().strip()
@@ -1586,40 +1584,8 @@ class JarvisGUI(QMainWindow):
                     if self.audio_shield_timer.interval() != 1500:
                         self.audio_shield_timer.setInterval(1500)
         except Exception:
-            pass
-
-        if not self.mic_active:
-            return
-            
-        # Call ctypes foreground title fetcher
-        try:
-            import ctypes
-            user32 = ctypes.windll.user32
-            hwnd = user32.GetForegroundWindow()
-            if not hwnd:
-                return
-            length = user32.GetWindowTextLengthW(hwnd)
-            if length == 0:
-                return
-            buf = ctypes.create_unicode_buffer(length + 1)
-            user32.GetWindowTextW(hwnd, buf, length + 1)
-            title = buf.value.lower()
-        except Exception:
-            return
-            
-        shield_keywords = [
-            "youtube", "instagram", "reels", "netflix", "spotify", 
-            "discord", "zoom", "teams", "meet", "vlc", "player",
-            "premiere", "photoshop", "game", "minecraft"
-        ]
-        
-        for kw in shield_keywords:
-            if kw in title:
-                # Auto-mute microphone silently to protect audio stream
-                if self.mic_active:
-                    self.set_microphone_state(False)
-                    self.add_notif_signal.emit(f"Audio Shield active: microphone muted ({kw}).")
-                break
+        """Audio Shield passive monitor - auto-muting disabled so mic stays active continuously."""
+        pass
 
     def present_reply_in_hud(self, query: str, reply: str):
         if not hasattr(self, "mini_widget") or not self.mini_widget:
