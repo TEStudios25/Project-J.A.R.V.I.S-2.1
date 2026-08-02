@@ -379,17 +379,41 @@ class JarvisBrain:
             return error_msg
 
     def analyze_sentiment(self, text: str) -> str:
-        text = text.lower()
-        fatigued = ["tired", "exhausted", "sleepy", "headache", "stress", "slow", "hard", "difficult"]
-        excited = ["awesome", "great", "wow", "amazing", "cool", "working", "happy", "yes", "lets go"]
-        rushed = ["fast", "quick", "hurry", "rush", "now", "immediately", "brief", "compact"]
+        text_lower = text.lower().strip()
         
-        if any(w in text for w in fatigued):
-            return "Fatigued"
-        elif any(w in text for w in excited):
-            return "Excited"
-        elif any(w in text for w in rushed):
-            return "Rushed"
+        # Fast local keyword bypass for short standard replies
+        if len(text_lower.split()) <= 2:
+            fatigued = ["tired", "exhausted", "sleepy", "stress", "slow", "sad"]
+            excited = ["awesome", "great", "wow", "happy", "yes", "lets go"]
+            rushed = ["fast", "quick", "hurry", "rush", "now"]
+            if any(w in text_lower for w in fatigued):
+                return "Fatigued"
+            elif any(w in text_lower for w in excited):
+                return "Excited"
+            elif any(w in text_lower for w in rushed):
+                return "Rushed"
+            return "Calm"
+            
+        # Dynamic Cloud Sentiment Analysis via Gemini
+        try:
+            import google.generativeai as genai
+            model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
+            model = genai.GenerativeModel(model_name=model_name)
+            
+            prompt = (
+                f"Analyze the emotional sentiment of the following user statement: '{text}'. "
+                "Classify the user's mood into exactly one of these labels: 'Calm', 'Excited', 'Fatigued', 'Rushed', 'Frustrated', 'Happy', or 'Sad'. "
+                "Output ONLY the single classification word. Do not add punctuation, formatting, or metadata."
+            )
+            response = model.generate_content(prompt)
+            result = response.text.strip().capitalize()
+            
+            valid_moods = ["Calm", "Excited", "Fatigued", "Rushed", "Frustrated", "Happy", "Sad"]
+            if result in valid_moods:
+                return result
+        except Exception as e:
+            print(f"[🧠 Brain Sentiment]: Cloud analysis failed, using local fallback. Error: {e}")
+            
         return "Calm"
 
     def log_habit_metric(self, command_text: str):
