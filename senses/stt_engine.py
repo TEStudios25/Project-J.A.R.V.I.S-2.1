@@ -95,7 +95,7 @@ def recognize_audio_local(audio) -> str:
         with open(temp_wav_path, "wb") as f:
             f.write(audio.get_wav_data())
             
-        segments, info = model.transcribe(temp_wav_path, task="translate")
+        segments, info = model.transcribe(temp_wav_path, task="transcribe")
         text = "".join([segment.text for segment in segments]).strip().lower()
         return text
     except Exception as e:
@@ -245,16 +245,24 @@ def listen(check_active_func=None) -> str:
                 print(f"[System]: Background noise ignored (RMS: {round(rms, 1)} < 180)")
                 return ""
 
-            # Pure Direct English STT (Instant & Rock-Solid)
+            # Pure Direct English STT (Dual-Engine Fail-Proof Pipeline)
             query = ""
             try:
                 query = recognizer.recognize_google(audio).lower().strip()
-                print(f"[🎙️ STT Engine]: Recognized speech: '{query}'")
+                if query:
+                    print(f"[🎙️ Google STT]: Recognized speech: '{query}'")
             except sr.UnknownValueError:
+                # Ambient noise / silence. Silently return empty string.
                 return ""
             except Exception as e:
-                print(f"[🎙️ STT Engine Error]: {e}")
-                return ""
+                print(f"[🎙️ Google STT Network Fallback -> Local Whisper]: {e}")
+                try:
+                    query = recognize_audio_local(audio)
+                    if query:
+                        print(f"[🎙️ Local Whisper STT]: Recognized speech: '{query}'")
+                except Exception as ex:
+                    print(f"[🎙️ STT Engine Error]: {ex}")
+                    return ""
 
             import re
             query = re.sub(r"\[.*?\]", "", query).strip()
