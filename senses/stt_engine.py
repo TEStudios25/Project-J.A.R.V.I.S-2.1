@@ -211,6 +211,13 @@ def listen(check_active_func=None) -> str:
         import re
         query = re.sub(r"\[.*?\]", "", query).strip()
 
+        # 🚨 REAL-TIME SPEECH BARGE-IN INTERRUPT 🚨
+        # If user speaks while J.A.R.V.I.S. is talking out loud, INSTANTLY cut off TTS playback!
+        import senses.tts_engine
+        if query and senses.tts_engine.speaking_state.get("is_speaking", False):
+            print("\n[⚡ Barge-In]: User spoke mid-speech! Cutting off J.A.R.V.I.S. audio playback...")
+            senses.tts_engine.stop_audio()
+
         # Set whisper mode state on TTS engine
         import senses.tts_engine
         if (0 < rms < 110) or "whisper" in query.lower():
