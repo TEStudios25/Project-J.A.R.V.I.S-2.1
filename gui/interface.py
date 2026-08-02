@@ -216,15 +216,15 @@ class ClapListenerThread(threading.Thread):
         self.first_clap_time = None
         self.spike_armed = True
         
-        # Tuning parameters (same as original repo)
-        self.spike_ratio = 7.0
+        # Tuning parameters for sharp double-clap detection (filters out typing/clicks)
+        self.spike_ratio = 14.0
         self.cooldown_s = 0.45
-        self.min_double_gap_s = 0.05
-        self.max_double_gap_s = 0.35
+        self.min_double_gap_s = 0.10
+        self.max_double_gap_s = 0.38
         self.retrigger_ratio = 0.55
         self.noise_floor_alpha = 0.992
-        self.min_rms = 0.012
-        self.quiet_gate_mult = 2.2
+        self.min_rms = 0.075
+        self.quiet_gate_mult = 3.0
         
         def clap_callback(indata, frames, time_info, status):
             # Check speech activity inside callback
