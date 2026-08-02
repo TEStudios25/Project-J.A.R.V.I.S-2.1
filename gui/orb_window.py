@@ -75,6 +75,9 @@ def launch_orb_window():
     print("\n[🌌 Launching 3D Holographic Cyan Orb Core Window...]")
     try:
         url = f"http://127.0.0.1:{port}/orb.html?v={int(time.time())}"
+        cache_dir = os.path.abspath(os.path.join("data", "webview_cache"))
+        os.makedirs(cache_dir, exist_ok=True)
+
         window = webview.create_window(
             title="J.A.R.V.I.S. 3D Holographic Core",
             url=url,
@@ -86,7 +89,7 @@ def launch_orb_window():
             easy_drag=True,
             background_color="#020610"
         )
-        webview.start(debug=False)
+        webview.start(debug=False, storage_path=cache_dir)
     except Exception as e:
         print(f"[⚠️ 3D Orb Window Launch Warning]: {e}")
 
