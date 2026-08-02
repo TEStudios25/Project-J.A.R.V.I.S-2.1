@@ -245,8 +245,21 @@ class JarvisBrain:
             threading.Thread(target=speak, args=(error_msg,), daemon=True).start()
             return error_msg
 
+        # Parse bracketed acoustic expression metadata if present
+        import re
+        tone_match = re.match(r"^\[TONE:\s*([^,\]]+),\s*GAPS:\s*([^,\]]+),\s*SPEED:\s*([^\]]+)\]\s*(.*)$", user_text, re.IGNORECASE)
+        
+        parsed_mood = None
+        if tone_match:
+            parsed_mood = tone_match.group(1).strip().capitalize()
+            gaps_info = tone_match.group(2).strip().lower()
+            speed_info = tone_match.group(3).strip().lower()
+            raw_user_text = tone_match.group(4).strip()
+        else:
+            raw_user_text = user_text
+
         # Standby / Sleep mode command checks
-        clean_cmd = user_text.lower().strip().replace(".", "").replace(",", "").strip()
+        clean_cmd = raw_user_text.lower().strip().replace(".", "").replace(",", "").strip()
         
         # If J.A.R.V.I.S. is asleep, only listen for wake up words
         if self.sleep_mode:
@@ -270,11 +283,14 @@ class JarvisBrain:
             return sleep_msg
 
         # Update User Cognitive Sentiment Mood and Habit Analytics Logger
-        self.current_user_mood = self.analyze_sentiment(user_text)
-        self.log_habit_metric(user_text)
+        if parsed_mood:
+            self.current_user_mood = parsed_mood
+        else:
+            self.current_user_mood = self.analyze_sentiment(raw_user_text)
+        self.log_habit_metric(raw_user_text)
 
         try:
-            audio_action = classify_audio_command(user_text)
+            audio_action = classify_audio_command(raw_user_text)
             if audio_action == "stop":
                 stop_audio()
                 return ""
@@ -286,14 +302,14 @@ class JarvisBrain:
                 return ""
 
             live_time = time.strftime("%A, %B %d, %Y at %I:%M %p")
-            routing = build_routing_directive(user_text)
+            routing = build_routing_directive(raw_user_text)
             memory_context = get_memory_context(limit=4)
 
             # Check if user query explicitly requests a daily briefing routine
             import re
             briefing_match = re.search(
                 r"\b(run briefing|daily briefing|morning routine|wake up)\b",
-                user_text.lower()
+                raw_user_text.lower()
             )
             
             briefing_info = ""
@@ -349,7 +365,7 @@ class JarvisBrain:
                 "code", "debug", "refactor", "git", "terminal", "powershell",
                 "push to github", "run script", "run command", "autopilot", "macro"
             ]
-            use_heavy = any(trigger in user_text.lower() for trigger in heavy_triggers)
+            use_heavy = any(trigger in raw_user_text.lower() for trigger in heavy_triggers)
             
             if use_heavy:
                 print("[🧠 Model Routing]: Routing to Heavy Model (Gemini 1.5 Flash)...")

@@ -31,15 +31,16 @@ def init_whisper_async():
 
 def recognize_audio_gemini(audio_path: str) -> str:
     """
-    Uploads voice recording to Gemini Cloud for translation/transcription
-    using gemini-3.1-flash-lite. Exerts 0% CPU and 0% RAM.
+    Uploads voice recording to Gemini Cloud for multimodal acoustic analysis
+    and translation using gemini-3.1-flash-lite. Extracts emotional tone,
+    speaking speed, and pauses directly from raw audio.
     """
     import google.generativeai as genai
     model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
     model = genai.GenerativeModel(model_name=model_name)
     
     try:
-        print(f"[🎙️ STT Engine]: Translating voice sample via Gemini Cloud ({model_name})...")
+        print(f"[🎙️ STT Engine]: Analyzing acoustics and translating voice sample via Gemini Cloud ({model_name})...")
         audio_file = genai.upload_file(path=audio_path)
         
         # Wait for file processing (instant for short voice clips)
@@ -53,9 +54,15 @@ def recognize_audio_gemini(audio_path: str) -> str:
             time.sleep(0.3)
             
         prompt = (
-            "Listen to this voice recording. Transcribe the speech and translate it directly into English. "
-            "Output ONLY the translated English text, verbatim, with no markdown, conversational wrappers, "
-            "explanations, or warnings. If there is no speech, output nothing."
+            "You are an expert audio analysis and speech transcription engine. "
+            "Listen to this voice recording. First, transcribe the spoken words and translate them to English. "
+            "Second, analyze the acoustic qualities of the raw audio bytes: emotional tone (e.g., Calm, Excited, Fatigued, Rushed, Frustrated, Happy, Sad, Sorrow), "
+            "speed of speaking (slow/normal/fast), and the presence of emotional gaps or long pauses (represent stutters or pauses as '...'). "
+            "Format your output exactly like this: "
+            "[TONE: <emotional tone>, GAPS: <yes/no>, SPEED: <slow/normal/fast>] <translated English transcript>. "
+            "For example: '[TONE: Sad, GAPS: yes, SPEED: slow] I don't know... what to do.' "
+            "Keep the bracketed metadata block short, using only one of the valid mood words. "
+            "Output ONLY this formatted string. If there is no speech, output nothing."
         )
         response = model.generate_content([audio_file, prompt])
         
