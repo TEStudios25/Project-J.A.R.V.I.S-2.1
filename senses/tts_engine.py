@@ -109,17 +109,27 @@ def resume_audio():
         pass
 
 async def _stream_fast_audio(text: str, voice: str = None):
-    """Generates audio in RAM, applies real-time metallic DSP filter, and plays it instantly."""
+    """Generates ultra-realistic 24kHz Neural AI audio in RAM with dynamic emotional prosody."""
     global is_paused, whisper_mode, current_channel
     
     if not voice:
-        voice = os.getenv("JARVIS_VOICE", "en-GB-RyanNeural")
+        voice = os.getenv("JARVIS_VOICE", "en-US-ChristopherNeural")
         
-    # If whisper mode is active, choose a softer, whispering voice (always male RyanNeural)
-    if whisper_mode:
-        voice = os.getenv("JARVIS_VOICE", "en-GB-RyanNeural")
+    # Analyze text ending for dynamic emotional prosody (rate & pitch)
+    rate = "+0%"
+    pitch = "+0Hz"
+    
+    clean_strip = text.strip()
+    if clean_strip.endswith("!"):
+        rate = "+3%"
+        pitch = "+3Hz"   # Energetic, expressive, emphatic
+    elif clean_strip.endswith("..."):
+        rate = "-8%"
+        pitch = "-2Hz"   # Thoughtful, reflective, calm
+    elif clean_strip.endswith("?"):
+        pitch = "+2Hz"   # Inquisitive intonation
         
-    communicate = edge_tts.Communicate(text, voice)
+    communicate = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
     
     # Stream chunks directly into RAM
     audio_data = b""
@@ -134,26 +144,19 @@ async def _stream_fast_audio(text: str, voice: str = None):
     _ensure_mixer_init()
     
     try:
-        raw_sound = pygame.mixer.Sound(audio_stream)
-        
-        # Apply deep, robotic, futuristic vocoder DSP filter!
-        # (Skip DSP filter for whisper mode to preserve whisper soft texture)
-        if not whisper_mode:
-            processed_sound = _apply_jarvis_dsp_filter(raw_sound)
-        else:
-            processed_sound = raw_sound
-            
+        # High-Fidelity 24kHz Stereo Neural Audio (Pure, uncompressed, expressive human quality)
+        processed_sound = pygame.mixer.Sound(audio_stream)
         current_channel = processed_sound.play()
         
         # Adjust volume for whisper mode focus
         if whisper_mode:
-            current_channel.set_volume(0.32)
+            current_channel.set_volume(0.35)
         else:
             current_channel.set_volume(1.0)
             
         # The main play loop: remains alive if playing or paused
         while (current_channel and current_channel.get_busy()) or is_paused:
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(0.04)
             
     except Exception as e:
         print(f"[Mixer Error]: Playback failed -> {e}")
