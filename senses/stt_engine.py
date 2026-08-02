@@ -55,8 +55,7 @@ def recognize_audio_local(audio) -> str:
 
 # Create the recognizer globally so it remembers its settings
 recognizer = sr.Recognizer()
-recognizer.dynamic_energy_threshold = False
-recognizer.energy_threshold = 600   # Raised to 600 to prevent fan noise / ambient room triggers
+recognizer.energy_threshold = 300   # Default responsive 300 threshold for standard USB mic sensitivity
 recognizer.pause_threshold = 0.5    # Responsive timeout before auto-submitting
 
 is_calibrated = False # Global flag to ensure calibration runs only once on startup
@@ -147,8 +146,8 @@ def listen(check_active_func=None) -> str:
         # Calibrate noise ONCE on startup
         if not is_calibrated and not is_speaking:
             print("\n[System]: Calibrating microphone for ambient noise...")
-            recognizer.adjust_for_ambient_noise(source, duration=0.6)
-            recognizer.energy_threshold = max(500, recognizer.energy_threshold * 1.1)
+            recognizer.adjust_for_ambient_noise(source, duration=0.8)
+            recognizer.energy_threshold = max(150, min(800, recognizer.energy_threshold))
             is_calibrated = True
             print(f"[System]: Calibration complete. Energy threshold set to: {int(recognizer.energy_threshold)}")
         
@@ -165,7 +164,7 @@ def listen(check_active_func=None) -> str:
                 finally:
                     recognizer.pause_threshold = old_pt
             else:
-                recognizer.pause_threshold = 0.4
+                recognizer.pause_threshold = 0.5
                 audio = recognizer.listen(source, timeout=6, phrase_time_limit=10)
                 print("[System]: Processing voice...")
         except sr.WaitTimeoutError:
@@ -188,9 +187,8 @@ def listen(check_active_func=None) -> str:
         except Exception:
             rms = 0
 
-        # Noise Gate: Filter out ambient room noise/fan hum false positives
-        if rms < 180:
-            print(f"[System]: Background noise ignored (RMS: {round(rms, 1)} < 180)")
+        # Noise Gate: Filter out zero/extreme low audio
+        if rms < 30:
             return ""
 
         # Pure Direct English STT (Classic 2.1 Engine with Punctuation)
