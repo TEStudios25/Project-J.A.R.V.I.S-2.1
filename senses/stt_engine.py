@@ -29,6 +29,47 @@ def init_whisper_async():
 
 # Background initialization will be deferred to post-GUI startup to avoid DLL loader conflicts
 
+def recognize_audio_gemini(audio_path: str) -> str:
+    """
+    Uploads voice recording to Gemini Cloud for translation/transcription
+    using gemini-3.1-flash-lite. Exerts 0% CPU and 0% RAM.
+    """
+    import google.generativeai as genai
+    model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
+    model = genai.GenerativeModel(model_name=model_name)
+    
+    try:
+        print(f"[🎙️ STT Engine]: Translating voice sample via Gemini Cloud ({model_name})...")
+        audio_file = genai.upload_file(path=audio_path)
+        
+        # Wait for file processing (instant for short voice clips)
+        import time
+        for _ in range(15):
+            file_status = genai.get_file(audio_file.name)
+            if file_status.state.name == "ACTIVE":
+                break
+            elif file_status.state.name == "FAILED":
+                raise ValueError("Gemini cloud audio processing failed.")
+            time.sleep(0.3)
+            
+        prompt = (
+            "Listen to this voice recording. Transcribe the speech and translate it directly into English. "
+            "Output ONLY the translated English text, verbatim, with no markdown, conversational wrappers, "
+            "explanations, or warnings. If there is no speech, output nothing."
+        )
+        response = model.generate_content([audio_file, prompt])
+        
+        # Silently delete temp cloud file
+        try:
+            audio_file.delete()
+        except Exception:
+            pass
+            
+        return response.text.strip() if response.text else ""
+    except Exception as e:
+        print(f"[🎙️ STT Engine]: Gemini Cloud STT Error -> {e}")
+        return ""
+
 def recognize_audio_local(audio) -> str:
     model = get_whisper_model()
     if model is None:
@@ -193,13 +234,28 @@ def listen(check_active_func=None) -> str:
                 rms = 0
 
             # Translate the audio (Telugu/others to English)
-            use_local = os.getenv("USE_LOCAL_WHISPER", "true").lower() == "true"
+            use_local = os.getenv("USE_LOCAL_WHISPER", "false").lower() == "true" # Default to Gemini Cloud STT (highly accurate)
             query = ""
             if use_local:
                 try:
                     query = recognize_audio_local(audio)
                 except Exception as e:
                     print(f"[System]: Local Whisper error: {e}")
+            else:
+                # Use Gemini Cloud STT
+                try:
+                    scratch_dir = r"C:\Users\This Pc\.gemini\antigravity\scratch"
+                    os.makedirs(scratch_dir, exist_ok=True)
+                    temp_wav_path = os.path.join(scratch_dir, "temp_voice.wav")
+                    with open(temp_wav_path, "wb") as f:
+                        f.write(audio.get_wav_data())
+                    
+                    query = recognize_audio_gemini(temp_wav_path)
+                    
+                    if os.path.exists(temp_wav_path):
+                        os.remove(temp_wav_path)
+                except Exception as e:
+                    print(f"[System]: Gemini Cloud STT error: {e}")
             
             if not query:
                 try:
