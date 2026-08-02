@@ -131,6 +131,25 @@ def get_best_microphone_index():
 
 chosen_mic_index = get_best_microphone_index()
 
+def format_punctuation(query: str) -> str:
+    """Restores full capitalization and ending punctuation (?, .) for speech queries."""
+    if not query:
+        return ""
+    query = query.strip()
+    query = query[0].upper() + query[1:]
+    if not query.endswith(('.', '?', '!', ';', ':')):
+        question_words = (
+            "what", "why", "how", "when", "where", "who", "which", 
+            "can", "could", "would", "should", "is", "are", "do", 
+            "does", "did", "am", "was", "were", "will", "shall", "tell", "show"
+        )
+        first_word = query.split()[0].lower() if query.split() else ""
+        if first_word in question_words:
+            query += "?"
+        else:
+            query += "."
+    return query
+
 def listen(check_active_func=None) -> str:
     """
     Listens to the microphone with classic 2.1 instant SpeechRecognition.
@@ -210,6 +229,7 @@ def listen(check_active_func=None) -> str:
 
         import re
         query = re.sub(r"\[.*?\]", "", query).strip()
+        query = format_punctuation(query)
 
         # 🚨 REAL-TIME SPEECH BARGE-IN INTERRUPT 🚨
         # If user speaks while J.A.R.V.I.S. is talking out loud, INSTANTLY cut off TTS playback!
