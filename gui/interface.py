@@ -422,7 +422,7 @@ class JarvisGUI(QMainWindow):
 
     def initUI(self):
         # Frameless window configuration with an absolute J.A.R.V.I.S. theme
-        self.setWindowTitle("Project J.A.R.V.I.S. 2.0 Command Center")
+        self.setWindowTitle("Project J.A.R.V.I.S. 2.2 Command Center")
         self.resize(1250, 820)
         
         # Main stylesheet
@@ -493,7 +493,7 @@ class JarvisGUI(QMainWindow):
         title_text_layout = QVBoxLayout()
         title_text_layout.setSpacing(2)
         
-        title_lbl = QLabel("J.A.R.V.I.S. 2.0")
+        title_lbl = QLabel("J.A.R.V.I.S. 2.2")
         title_lbl.setFont(QFont("Segoe UI", 12, QFont.Bold))
         title_lbl.setStyleSheet("color: #66FCF1; border: none; font-weight: bold;")
         title_text_layout.addWidget(title_lbl)
@@ -730,7 +730,7 @@ class JarvisGUI(QMainWindow):
         hud_header_layout.setContentsMargins(0, 0, 0, 0)
         
         # Left title
-        hud_title_lbl = QLabel("PROJECT J.A.R.V.I.S. 2.0")
+        hud_title_lbl = QLabel("PROJECT J.A.R.V.I.S. 2.2")
         hud_title_lbl.setFont(QFont("Segoe UI", 16, QFont.Bold))
         hud_title_lbl.setStyleSheet("color: #FFFFFF; font-weight: bold; letter-spacing: 1px;")
         hud_header_layout.addWidget(hud_title_lbl)

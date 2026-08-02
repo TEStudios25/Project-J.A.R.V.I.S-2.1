@@ -113,10 +113,24 @@
             "id": "91db21f9-e275-426e-a122-8e2fa26d11b7",
             "time": "03:00 PM",
             "task": "Autopilot Code Review",
-            "status": "pending"
+            "status": "expired"
         },
         {
             "id": "84798a36-26a3-4621-99c2-301ddfaec802",
+            "time": "03:00 PM",
+            "task": "Double Booking Test",
+            "status": "expired"
+        }
+    ],
+    "2026-08-03": [
+        {
+            "id": "6c7d3735-8a7c-4045-8d5c-be07b50bee6b",
+            "time": "03:00 PM",
+            "task": "Autopilot Code Review",
+            "status": "pending"
+        },
+        {
+            "id": "109dfbde-0630-4f47-b25b-17ff343a1285",
             "time": "03:00 PM",
             "task": "Double Booking Test",
             "status": "pending"

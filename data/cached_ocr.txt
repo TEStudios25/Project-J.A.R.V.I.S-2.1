@@ -1,41 +1,15 @@
-Antigravity File View Window
-[1] Install IDE
-Project-J.A.R.V.I.S.-2.2 / Recent Conversation Topic Inquiry
-Yo that ting tong sound is coming even when i use the shortcut to on mic and off mic and send any response. But i want
-that sound to be fixed to only when JARVIS Responds like in old models
-Exploring 1 search
-Searched success.wav 8 results
-C:\Windows\system32\cmd.exe
-[ ] J.A.R.V.I.S. is checking today's calendar...]
-[ ] J.A.R.V.I.S. is checking today's calendar...]
-[ ] J.A.R.V.I.S. is checking today's calendar...]
-[ ] J.A.R.V.I.S. is checking today's calendar...]
-[ ] J.A.R.V.I.S. is checking today's calendar...]
-[ ] J.A.R.V.I.S. is checking today's calendar...]
-[ ] J.A.R.V.I.S. is checking today's calendar...]
-[ ] J.A.R.V.I.S. is checking today's calendar...]
-[ ] J.A.R.V.I.S. is checking today's calendar...]
-[ ] J.A.R.V.I.S. is checking today's calendar...]
-[ ] J.A.R.V.I.S. is checking today's calendar...]
-[ ] J.A.R.V.I.S. is checking today's calendar...]
-[ ] J.A.R.V.I.S. is checking today's calendar...]
-[ ] J.A.R.V.I.S. is checking today's calendar...]
-[ ] J.A.R.V.I.S. is checking today's calendar...]
-+ New Conversation
-Conversation History
-Scheduled Tasks
-Projects
-Project-J.A.R.V.I.S.-2.2
-Recent Conversation Topic...
-Project J.A.R.V.I.S 2.1
-Project J.A.R.V.I.S 2.1 2d
-Project J.A.R.V.I.S 2.0
-Project J.A.R.V.I.S 2.0 10d
-Settings
-And that CMD is running in background like VS Code terminal. I dont want it
-Gemini 3.5 Flash (Medium) ^
+J.A.R.V.I.S. 3D Holographic Core
+Project J.A.R.V.I.S. 2.1
+11:53:05 PM
+SAT, AUG 01
 Activate Windows
 Go to Settings to activate Windows.
-1
-21:15
-31-07-2026
+iGPU MODE: ULTRA BLOOM
+GESTURES OFF
+CAM: SWITCH
++
+-
+RESET
+ENG
+23:53
+01-08-2026

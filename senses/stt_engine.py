@@ -69,6 +69,33 @@ def get_best_microphone_index():
     p = pyaudio.PyAudio()
     try:
         device_count = p.get_device_count()
+        
+        # 0. User override via environment variables
+        env_index = os.getenv("JARVIS_MIC_INDEX")
+        if env_index is not None:
+            try:
+                idx = int(env_index)
+                if 0 <= idx < device_count:
+                    info = p.get_device_info_by_index(idx)
+                    print(f"[🎙️ STT Engine]: Selected Mic Override Index {idx} ({info.get('name')})")
+                    return idx
+            except Exception:
+                pass
+                
+        env_name = os.getenv("JARVIS_MIC_NAME")
+        if env_name:
+            env_name_lower = env_name.lower()
+            for i in range(device_count):
+                try:
+                    dev_info = p.get_device_info_by_index(i)
+                    if dev_info.get('maxInputChannels', 0) > 0:
+                        name = dev_info.get('name', '').lower()
+                        if env_name_lower in name:
+                            print(f"[🎙️ STT Engine]: Selected Mic Match '{env_name}' at Index {i} ({dev_info.get('name')})")
+                            return i
+                except Exception:
+                    pass
+
         # Priority 1: Real USB Audio Devices
         for i in range(device_count):
             try:
@@ -76,6 +103,7 @@ def get_best_microphone_index():
                 if dev_info.get('maxInputChannels', 0) > 0:
                     name = dev_info.get('name', '').lower()
                     if "usb audio device" in name or "usb microphone" in name or "usb mic" in name:
+                        print(f"[🎙️ STT Engine]: Auto-detected USB Mic at Index {i} ({dev_info.get('name')})")
                         return i
             except Exception:
                 pass
@@ -86,12 +114,15 @@ def get_best_microphone_index():
                 if dev_info.get('maxInputChannels', 0) > 0:
                     name = dev_info.get('name', '').lower()
                     if "sound mapper" not in name and "droidcam" not in name:
+                        print(f"[🎙️ STT Engine]: Auto-detected Built-in Mic at Index {i} ({dev_info.get('name')})")
                         return i
             except Exception:
                 pass
         # Priority 3: Fall back to default
         try:
-            return p.get_default_input_device_info().get('index')
+            default_idx = p.get_default_input_device_info().get('index')
+            print(f"[🎙️ STT Engine]: Fallback to Default Mic at Index {default_idx}")
+            return default_idx
         except Exception:
             return None
     except Exception:
