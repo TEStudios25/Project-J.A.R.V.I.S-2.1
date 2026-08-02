@@ -42,14 +42,7 @@ def recognize_audio_local(audio) -> str:
         with open(temp_wav_path, "wb") as f:
             f.write(audio.get_wav_data())
             
-        segments, info = model.transcribe(
-            temp_wav_path,
-            task="translate",
-            beam_size=1,
-            best_of=1,
-            temperature=0.0,
-            vad_filter=True
-        )
+        segments, info = model.transcribe(temp_wav_path, task="translate")
         text = "".join([segment.text for segment in segments]).strip().lower()
         return text
     except Exception as e:
