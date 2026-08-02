@@ -27,61 +27,6 @@ def init_whisper_async():
     import threading
     threading.Thread(target=get_whisper_model, daemon=True).start()
 
-# Background initialization will be deferred to post-GUI startup to avoid DLL loader conflicts
-
-def recognize_audio_gemini(audio_path: str) -> str:
-    """
-    Uploads voice recording to Gemini Cloud for translation/transcription
-    using gemini-3.1-flash-lite. Exerts 0% CPU and 0% RAM.
-    """
-    import google.generativeai as genai
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        print("[🎙️ STT Engine Error]: GEMINI_API_KEY missing in environment!")
-        return ""
-    genai.configure(api_key=api_key)
-
-    model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
-    model = genai.GenerativeModel(model_name=model_name)
-    
-    try:
-        print(f"[🎙️ STT Engine]: Translating voice sample via Gemini Cloud ({model_name})...")
-        audio_file = genai.upload_file(path=audio_path)
-        
-        # Wait for file processing (instant for short voice clips)
-        import time
-        for _ in range(15):
-            file_status = genai.get_file(audio_file.name)
-            if file_status.state.name == "ACTIVE":
-                break
-            elif file_status.state.name == "FAILED":
-                raise ValueError("Gemini cloud audio processing failed.")
-            time.sleep(0.3)
-            
-        prompt = (
-            "You are an expert multilingual speech-to-text translator. "
-            "Listen carefully to the audio recording. The speaker may speak in Telugu, Hindi, English, or a mix of languages (e.g., Telugu mixed with English). "
-            "Your task is to understand the exact intended meaning of what the speaker said, and output the clear, natural, accurate English translation. "
-            "If the speaker spoke in English, output their exact English words. "
-            "If the speaker spoke in Telugu, Hindi, or another language, translate their exact meaning into clear English. "
-            "Output ONLY the final English translation verbatim. Do NOT add notes, explanations, language labels, or punctuation marks like brackets."
-        )
-        response = model.generate_content([audio_file, prompt])
-        
-        # Silently delete temp cloud file
-        try:
-            audio_file.delete()
-        except Exception:
-            pass
-            
-        import re
-        raw_res = response.text.strip() if response.text else ""
-        clean_res = re.sub(r"\[.*?\]", "", raw_res).strip()
-        return clean_res
-    except Exception as e:
-        print(f"[🎙️ STT Engine]: Gemini Cloud STT Error -> {e}")
-        return ""
-
 def recognize_audio_local(audio) -> str:
     model = get_whisper_model()
     if model is None:
@@ -108,12 +53,11 @@ def recognize_audio_local(audio) -> str:
         except Exception:
             pass
 
-
-# 1. Create the recognizer globally so it remembers its settings
+# Create the recognizer globally so it remembers its settings
 recognizer = sr.Recognizer()
 recognizer.dynamic_energy_threshold = False
 recognizer.energy_threshold = 600   # Raised to 600 to prevent fan noise / ambient room triggers
-recognizer.pause_threshold = 0.5    # Responsive 0.5-second timeout before auto-submitting
+recognizer.pause_threshold = 0.5    # Responsive timeout before auto-submitting
 
 is_calibrated = False # Global flag to ensure calibration runs only once on startup
 
@@ -190,7 +134,7 @@ chosen_mic_index = get_best_microphone_index()
 
 def listen(check_active_func=None) -> str:
     """
-    Listens to the microphone with ultra-fast 0.4s pause threshold and direct English STT.
+    Listens to the microphone with classic 2.1 instant SpeechRecognition.
     """
     global is_calibrated, chosen_mic_index
     with sr.Microphone(device_index=chosen_mic_index) as source:
@@ -221,99 +165,70 @@ def listen(check_active_func=None) -> str:
                 finally:
                     recognizer.pause_threshold = old_pt
             else:
-                # INSTANT MODE: 0.4-second silence timeout for instant submission as soon as you finish speaking!
                 recognizer.pause_threshold = 0.4
-                audio = recognizer.listen(source, timeout=8, phrase_time_limit=10)
+                audio = recognizer.listen(source, timeout=6, phrase_time_limit=10)
                 print("[System]: Processing voice...")
-            
-            # Calculate RMS energy of the recorded audio
-            import struct
-            import math
-            try:
-                frame_data = audio.frame_data
-                count = len(frame_data) // 2
-                if count > 0:
-                    shorts = struct.unpack(f"<{count}h", frame_data)
-                    rms = math.sqrt(sum(s*s for s in shorts) / count)
-                else:
-                    rms = 0
-            except Exception:
-                rms = 0
-
-            # Noise Gate: Filter out ambient room noise/fan hum false positives
-            if rms < 180:
-                print(f"[System]: Background noise ignored (RMS: {round(rms, 1)} < 180)")
-                return ""
-
-            # Pure Direct English STT (Dual-Engine Fail-Proof Pipeline)
-            query = ""
-            try:
-                query = recognizer.recognize_google(audio).strip()
-                if query:
-                    print(f"[🎙️ Google STT]: Recognized speech: '{query}'")
-            except sr.UnknownValueError:
-                # Ambient noise / silence. Silently return empty string.
-                return ""
-            except Exception as e:
-                print(f"[🎙️ Google STT Network Fallback -> Local Whisper]: {e}")
-                try:
-                    query = recognize_audio_local(audio)
-                    if query:
-                        print(f"[🎙️ Local Whisper STT]: Recognized speech: '{query}'")
-                except Exception as ex:
-                    print(f"[🎙️ STT Engine Error]: {ex}")
-                    return ""
-
-            import re
-            query = re.sub(r"\[.*?\]", "", query).strip()
-
-            # Set whisper mode state on TTS engine
-            import senses.tts_engine
-            if (0 < rms < 110) or "whisper" in query.lower():
-                senses.tts_engine.whisper_mode = True
-                print(f"[System]: Whisper Mode Active (RMS: {round(rms, 1)})")
-            else:
-                senses.tts_engine.whisper_mode = False
-                senses.tts_engine.whisper_mode = False
-            
-            # Echo-Cancellation & Override Filtering
-            if is_speaking:
-                # We search the messy overlapping audio for your command
-                override_triggers = ["stop", "shut up", "pause", "quiet", "cancel", "resume"]
-                
-                for trigger in override_triggers:
-                    if trigger in query:
-                        print(f"\n[Mr. Pranav (Interrupt)]: {query}")
-                        # Return exactly what you said ('stop', 'pause', etc.)
-                        return trigger 
-                
-                # If no command is found, it was just his own echo. Delete it!
-                return ""
-            else:
-                # Normal speech when the room was quiet
-                print(f"[Mr. Pranav]: {query}")
-                return query
-            
         except sr.WaitTimeoutError:
-            # The short burst timed out without hearing anyone. Keep looping quietly.
+            # Silence timeout when no one spoke. Quiet return, NO ERROR LOG!
             return ""
+        except Exception:
+            return ""
+
+        # Calculate RMS energy of the recorded audio
+        import struct
+        import math
+        try:
+            frame_data = audio.frame_data
+            count = len(frame_data) // 2
+            if count > 0:
+                shorts = struct.unpack(f"<{count}h", frame_data)
+                rms = math.sqrt(sum(s*s for s in shorts) / count)
+            else:
+                rms = 0
+        except Exception:
+            rms = 0
+
+        # Noise Gate: Filter out ambient room noise/fan hum false positives
+        if rms < 180:
+            print(f"[System]: Background noise ignored (RMS: {round(rms, 1)} < 180)")
+            return ""
+
+        # Pure Direct English STT (Classic 2.1 Engine with Punctuation)
+        query = ""
+        try:
+            query = recognizer.recognize_google(audio).strip()
+            if query:
+                print(f"[🎙️ Google STT]: Recognized speech: '{query}'")
         except sr.UnknownValueError:
-            return ""
-        except sr.RequestError as e:
-            print(f"[System]: Network error -> {e}")
+            # Ambient noise / silence. Silently return empty string.
             return ""
         except Exception as e:
-            print(f"[System]: STT Error -> {e}")
-            return ""
+            try:
+                query = recognize_audio_local(audio)
+                if query:
+                    print(f"[🎙️ Local Whisper STT]: Recognized speech: '{query}'")
+            except Exception:
+                return ""
 
-# ===============================================================
-# 🧪 ISOLATED TESTING BLOCK
-# ===============================================================
-if __name__ == "__main__":
-    print("\nInitiating STT Intercept diagnostics...")
-    while True:
-        result = listen()
-        if result:
-            print(f"✅ Captured: {result}")
-            if result in ["exit", "stop", "quit"]:
-                break
+        import re
+        query = re.sub(r"\[.*?\]", "", query).strip()
+
+        # Set whisper mode state on TTS engine
+        import senses.tts_engine
+        if (0 < rms < 110) or "whisper" in query.lower():
+            senses.tts_engine.whisper_mode = True
+            print(f"[System]: Whisper Mode Active (RMS: {round(rms, 1)})")
+        else:
+            senses.tts_engine.whisper_mode = False
+        
+        # Echo-Cancellation & Override Filtering
+        if is_speaking:
+            override_triggers = ["stop", "shut up", "pause", "quiet", "cancel", "resume"]
+            for trigger in override_triggers:
+                if trigger in query.lower():
+                    print(f"\n[Mr. Pranav (Interrupt)]: {query}")
+                    return trigger 
+            return ""
+        else:
+            print(f"[Mr. Pranav]: {query}")
+            return query
