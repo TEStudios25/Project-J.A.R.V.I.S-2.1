@@ -188,35 +188,9 @@ def get_best_microphone_index():
 
 chosen_mic_index = get_best_microphone_index()
 
-def translate_text_to_english(raw_text: str) -> str:
-    if not raw_text or not raw_text.strip():
-        return ""
-    text = raw_text.strip()
-    try:
-        import google.generativeai as genai
-        api_key = os.getenv("GEMINI_API_KEY")
-        if api_key:
-            genai.configure(api_key=api_key)
-            model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
-            model = genai.GenerativeModel(model_name)
-            prompt = (
-                f"You are a speech translation engine. Translate the following spoken phrase into clear, natural English: '{text}'. "
-                "If it is already standard English, return the exact phrase. "
-                "Output ONLY the translated English phrase verbatim with no explanations, notes, or quotes."
-            )
-            res = model.generate_content(prompt)
-            if res and res.text:
-                translated = res.text.strip().replace('"', '').replace("'", "")
-                print(f"[🎙️ STT Fast Translator]: '{text}' -> '{translated}'")
-                return translated
-    except Exception as e:
-        print(f"[🎙️ STT Fast Translator Error]: {e}")
-    return text
-
 def listen(check_active_func=None) -> str:
     """
-    Listens to the microphone with an advanced 'Barge-In' Intercept Mode.
-    Normal Mode uses simple pause-based auto-submission with a 0.8-second timeout.
+    Listens to the microphone with ultra-fast 0.4s pause threshold and direct English STT.
     """
     global is_calibrated, chosen_mic_index
     with sr.Microphone(device_index=chosen_mic_index) as source:
@@ -226,12 +200,10 @@ def listen(check_active_func=None) -> str:
         if senses.tts_engine.speaking_state.get("is_speaking", False):
             is_speaking = True
             
-        # THE FIX: Calibrate noise ONLY once on boot, never on every turn!
-        # This speeds up listening start by 0.5s per turn.
+        # Calibrate noise ONCE on startup
         if not is_calibrated and not is_speaking:
             print("\n[System]: Calibrating microphone for ambient noise...")
-            recognizer.adjust_for_ambient_noise(source, duration=0.8)
-            # Clamp energy threshold to a safe 500 minimum to prevent fan noise triggers
+            recognizer.adjust_for_ambient_noise(source, duration=0.6)
             recognizer.energy_threshold = max(500, recognizer.energy_threshold * 1.1)
             is_calibrated = True
             print(f"[System]: Calibration complete. Energy threshold set to: {int(recognizer.energy_threshold)}")
@@ -242,18 +214,16 @@ def listen(check_active_func=None) -> str:
         try:
             # Dynamic Listening Logic
             if is_speaking:
-                # BARGE-IN MODE: Listen in short bursts without recalibrating
-                # Use small pause threshold for quick barge-in overrides
                 old_pt = recognizer.pause_threshold
-                recognizer.pause_threshold = 0.4
+                recognizer.pause_threshold = 0.3
                 try:
                     audio = recognizer.listen(source, timeout=1, phrase_time_limit=3)
                 finally:
                     recognizer.pause_threshold = old_pt
             else:
-                # NORMAL MODE: Stable long-timeout to keep stream active
-                recognizer.pause_threshold = 0.5
-                audio = recognizer.listen(source, timeout=10, phrase_time_limit=12)
+                # INSTANT MODE: 0.4-second silence timeout for instant submission as soon as you finish speaking!
+                recognizer.pause_threshold = 0.4
+                audio = recognizer.listen(source, timeout=8, phrase_time_limit=10)
                 print("[System]: Processing voice...")
             
             # Calculate RMS energy of the recorded audio
@@ -271,39 +241,20 @@ def listen(check_active_func=None) -> str:
                 rms = 0
 
             # Noise Gate: Filter out ambient room noise/fan hum false positives
-            if rms < 200:
-                print(f"[System]: Background noise ignored (RMS: {round(rms, 1)} < 200)")
+            if rms < 180:
+                print(f"[System]: Background noise ignored (RMS: {round(rms, 1)} < 180)")
                 return ""
 
-            # Multilingual STT & Fast Translation Pipeline (0.5s Latency)
+            # Pure Direct English STT (Instant & Rock-Solid)
             query = ""
-            
-            # Priority 1: Fast Multilingual Google Speech STT (0.3s) + Gemini Text Translation (0.2s)
             try:
-                try:
-                    raw_speech = recognizer.recognize_google(audio, language="te-IN").lower()
-                except Exception:
-                    try:
-                        raw_speech = recognizer.recognize_google(audio, language="en-IN").lower()
-                    except Exception:
-                        raw_speech = recognizer.recognize_google(audio).lower()
-                
-                print(f"[🎙️ Speech Captured]: '{raw_speech}'")
-                query = translate_text_to_english(raw_speech)
+                query = recognizer.recognize_google(audio).lower().strip()
+                print(f"[🎙️ STT Engine]: Recognized speech: '{query}'")
+            except sr.UnknownValueError:
+                return ""
             except Exception as e:
-                # Fallback to local Whisper or Gemini Cloud if Google Speech API drops
-                use_local = os.getenv("USE_LOCAL_WHISPER", "false").lower() == "true"
-                if use_local:
-                    query = recognize_audio_local(audio)
-                else:
-                    scratch_dir = r"C:\Users\This Pc\.gemini\antigravity\scratch"
-                    os.makedirs(scratch_dir, exist_ok=True)
-                    temp_wav_path = os.path.join(scratch_dir, "temp_voice.wav")
-                    with open(temp_wav_path, "wb") as f:
-                        f.write(audio.get_wav_data())
-                    query = recognize_audio_gemini(temp_wav_path)
-                    if os.path.exists(temp_wav_path):
-                        os.remove(temp_wav_path)
+                print(f"[🎙️ STT Engine Error]: {e}")
+                return ""
 
             import re
             query = re.sub(r"\[.*?\]", "", query).strip()
