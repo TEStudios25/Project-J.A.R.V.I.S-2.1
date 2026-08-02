@@ -31,16 +31,21 @@ def init_whisper_async():
 
 def recognize_audio_gemini(audio_path: str) -> str:
     """
-    Uploads voice recording to Gemini Cloud for multimodal acoustic analysis
-    and translation using gemini-3.1-flash-lite. Extracts emotional tone,
-    speaking speed, and pauses directly from raw audio.
+    Uploads voice recording to Gemini Cloud for translation/transcription
+    using gemini-3.1-flash-lite. Exerts 0% CPU and 0% RAM.
     """
     import google.generativeai as genai
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("[🎙️ STT Engine Error]: GEMINI_API_KEY missing in environment!")
+        return ""
+    genai.configure(api_key=api_key)
+
     model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
     model = genai.GenerativeModel(model_name=model_name)
     
     try:
-        print(f"[🎙️ STT Engine]: Analyzing acoustics and translating voice sample via Gemini Cloud ({model_name})...")
+        print(f"[🎙️ STT Engine]: Translating voice sample via Gemini Cloud ({model_name})...")
         audio_file = genai.upload_file(path=audio_path)
         
         # Wait for file processing (instant for short voice clips)
