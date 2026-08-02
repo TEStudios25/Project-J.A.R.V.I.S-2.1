@@ -264,10 +264,18 @@ def listen(check_active_func=None) -> str:
                     # Reraise or handle to catch UnknownValueError / RequestError
                     raise e
 
-            
+            # Inject acoustic expression markers into the query text based on physical volume (RMS)
+            if query.strip():
+                if rms > 1600:
+                    query = f"[SPOKEN LOUDLY] {query.upper()}!!!"
+                    print(f"[System]: Acoustic Expression: Shouting/Loud Voice Detected (RMS: {round(rms, 1)})")
+                elif 0 < rms < 110:
+                    query = f"[WHISPERED] {query.lower()}"
+                    print(f"[System]: Acoustic Expression: Whisper Detected (RMS: {round(rms, 1)})")
+
             # Set whisper mode state on TTS engine
             import senses.tts_engine
-            if (0 < rms < 120) or "whisper" in query:
+            if (0 < rms < 110) or "whisper" in query.lower() or "[whispered]" in query.lower():
                 senses.tts_engine.whisper_mode = True
                 print(f"[System]: Whisper Mode Active (RMS: {round(rms, 1)})")
             else:
