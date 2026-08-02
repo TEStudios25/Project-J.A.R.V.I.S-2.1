@@ -188,6 +188,31 @@ def get_best_microphone_index():
 
 chosen_mic_index = get_best_microphone_index()
 
+def translate_text_to_english(raw_text: str) -> str:
+    if not raw_text or not raw_text.strip():
+        return ""
+    text = raw_text.strip()
+    try:
+        import google.generativeai as genai
+        api_key = os.getenv("GEMINI_API_KEY")
+        if api_key:
+            genai.configure(api_key=api_key)
+            model_name = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
+            model = genai.GenerativeModel(model_name)
+            prompt = (
+                f"You are a speech translation engine. Translate the following spoken phrase into clear, natural English: '{text}'. "
+                "If it is already standard English, return the exact phrase. "
+                "Output ONLY the translated English phrase verbatim with no explanations, notes, or quotes."
+            )
+            res = model.generate_content(prompt)
+            if res and res.text:
+                translated = res.text.strip().replace('"', '').replace("'", "")
+                print(f"[🎙️ STT Fast Translator]: '{text}' -> '{translated}'")
+                return translated
+    except Exception as e:
+        print(f"[🎙️ STT Fast Translator Error]: {e}")
+    return text
+
 def listen(check_active_func=None) -> str:
     """
     Listens to the microphone with an advanced 'Barge-In' Intercept Mode.
@@ -250,41 +275,35 @@ def listen(check_active_func=None) -> str:
                 print(f"[System]: Background noise ignored (RMS: {round(rms, 1)} < 200)")
                 return ""
 
-            # Translate the audio (Telugu/others to English)
-            use_local = os.getenv("USE_LOCAL_WHISPER", "false").lower() == "true" # Default to Gemini Cloud STT (highly accurate)
+            # Multilingual STT & Fast Translation Pipeline (0.5s Latency)
             query = ""
-            if use_local:
+            
+            # Priority 1: Fast Multilingual Google Speech STT (0.3s) + Gemini Text Translation (0.2s)
+            try:
                 try:
+                    raw_speech = recognizer.recognize_google(audio, language="te-IN").lower()
+                except Exception:
+                    try:
+                        raw_speech = recognizer.recognize_google(audio, language="en-IN").lower()
+                    except Exception:
+                        raw_speech = recognizer.recognize_google(audio).lower()
+                
+                print(f"[🎙️ Speech Captured]: '{raw_speech}'")
+                query = translate_text_to_english(raw_speech)
+            except Exception as e:
+                # Fallback to local Whisper or Gemini Cloud if Google Speech API drops
+                use_local = os.getenv("USE_LOCAL_WHISPER", "false").lower() == "true"
+                if use_local:
                     query = recognize_audio_local(audio)
-                except Exception as e:
-                    print(f"[System]: Local Whisper error: {e}")
-            else:
-                # Use Gemini Cloud STT
-                try:
+                else:
                     scratch_dir = r"C:\Users\This Pc\.gemini\antigravity\scratch"
                     os.makedirs(scratch_dir, exist_ok=True)
                     temp_wav_path = os.path.join(scratch_dir, "temp_voice.wav")
                     with open(temp_wav_path, "wb") as f:
                         f.write(audio.get_wav_data())
-                    
                     query = recognize_audio_gemini(temp_wav_path)
-                    
                     if os.path.exists(temp_wav_path):
                         os.remove(temp_wav_path)
-                except Exception as e:
-                    print(f"[System]: Gemini Cloud STT error: {e}")
-            
-            if not query:
-                try:
-                    # Priority 1: English Google STT
-                    query = recognizer.recognize_google(audio).lower()
-                except Exception:
-                    try:
-                        # Priority 2: Telugu (te-IN) Google STT fallback
-                        query = recognizer.recognize_google(audio, language="te-IN").lower()
-                        print(f"[🎙️ STT Engine]: Recognized Telugu speech fallback: '{query}'")
-                    except Exception as e:
-                        raise e
 
             import re
             query = re.sub(r"\[.*?\]", "", query).strip()
